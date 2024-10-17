@@ -13,6 +13,7 @@ public:
 	int get_y();
 	int get_color();
 	bool is_lit();
+	bool is_falling();
 
 	void set_x(int x);
 	void set_y(int y);

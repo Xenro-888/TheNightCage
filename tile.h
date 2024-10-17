@@ -1,7 +1,7 @@
 #pragma once
 #include "player.h"
 
-enum tile_type {unspecified, straight_tile, t_tile, cross_tile, key_tile, gate_tile, start_tile, pit_tile};
+enum tile_type {unspecified, straight_tile, t_tile, cross_tile, key_tile, gate_tile, start_tile, pit_tile, wax_eater};
 
 int modulo(int num, int div);
 

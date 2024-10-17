@@ -63,32 +63,46 @@ tile* board::get_adj_tile(int x, int y, int corridor)
 
 bool board::move_player(player* player_to_move, int corridor) 
 {
-	int player_x = player_to_move->get_x();
-	int player_y = player_to_move->get_y();
-	tile* first_tile = play_area[player_y][player_x];
+	tile* first_tile = play_area[player_to_move->get_y()][player_to_move->get_x()];
 	tile* next_tile = get_adj_tile(first_tile->get_x(), first_tile->get_y(), corridor);
 
-	if (!first_tile->get_corridors()[corridor])
+	if (
+		!first_tile->get_corridors()[corridor] ||
+		!next_tile->get_corridors()[modulo(corridor + 2, 4)] ||
+		next_tile->get_standing_player() != nullptr
+		)
+	{
 		return false;
-
-	if (next_tile->get_standing_player() != nullptr)
-		return false;
+	}
 
 	first_tile->set_standing_player(nullptr);
 	player_to_move->set_x(next_tile->get_x());
 	player_to_move->set_y(next_tile->get_y());
-	next_tile->set_standing_player(player_to_move);
+
+	if (next_tile->get_type() != pit_tile)
+		next_tile->set_standing_player(player_to_move);
+
+	if (player_to_move->is_lit())
+		illuminate(player_to_move);
+	darkness();
+	display();
+
+	// activate monsters
 }
 
 void board::illuminate(player* lit_player)
 {
-	tile* standing_tile = play_area[lit_player->get_y()][lit_player->get_x()];
+	if (lit_player->is_falling())
+		return;
+
+	tile* standing_tile = get_standing_tile(lit_player);
 	int corridor_directions[][2] = { {0, -1}, {-1, 0}, {0, 1}, {1, 0} };
 
 	for (int corridor = 0; corridor < 4; corridor++)
 	{
-		int tile_x = modulo(lit_player->get_x() + corridor_directions[corridor][0], 6);
-		int tile_y = modulo(lit_player->get_y() + corridor_directions[corridor][1], 6);
+		int* curr_corridor = corridor_directions[corridor];
+		int tile_x = modulo(lit_player->get_x() + curr_corridor[0], 6);
+		int tile_y = modulo(lit_player->get_y() + curr_corridor[1], 6);
 
 		if (!standing_tile->get_corridors()[corridor])
 			continue;
@@ -98,46 +112,40 @@ void board::illuminate(player* lit_player)
 
 		int new_tile_type = -1;
 		while (new_tile_type < 0 || new_tile_type == 6)
-			new_tile_type = rand() % 7 + 1;
+			new_tile_type = rand() % 8 + 1;
 
 		tile* new_tile = new tile((tile_type)new_tile_type);
 		int* tile_corridors = new_tile->get_corridors();
 		place_tile(new_tile, tile_x, tile_y);
 
 		while (!tile_corridors[modulo(corridor + 2, 4)])
-		{
 			new_tile->rotate();
-		}
 	}
 }
 
-void board::darkness(player* players[4])
+void board::darkness()
 {
 	std::vector<tile*> safe_tiles;
 	int corridor_directions[][2] = { {0, -1}, {-1, 0}, {0, 1}, {1, 0} };
-	for (int i = 0; i < 4; i++)
+
+	for (player* curr_player : players)
 	{
-		player* curr_player = players[i];
+		tile* standing_tile = get_standing_tile(curr_player);
 		int player_x = curr_player->get_x();
 		int player_y = curr_player->get_y();
-		tile* standing_tile = get_standing_tile(curr_player);
 
-		if (!curr_player->is_lit())
+		if (!curr_player->is_lit() || curr_player->is_falling())
 			continue;
 
 		safe_tiles.push_back(standing_tile);
 		for (int corridor = 0; corridor < 4; corridor++)
 		{
 			if (!standing_tile->get_corridors()[corridor])
-			{
 				continue;
-			}
 
-			std::cout << "CORRIDOR: " << standing_tile->get_corridors()[corridor] << std::endl;
 			tile* adj_tile = get_adj_tile(player_x, player_y, corridor);
 			safe_tiles.push_back(adj_tile);
 		}
-		std::cout << "TYPE: " << standing_tile->get_type() << std::endl;
 	}
 
 	for (int y = 0; y < 6; y++)
@@ -145,11 +153,7 @@ void board::darkness(player* players[4])
 		for (int x = 0; x < 6; x++)
 		{
 			tile* curr_tile = play_area[y][x];
-
-			if (curr_tile == nullptr)
-				continue;
-
-			if (std::find(safe_tiles.begin(), safe_tiles.end(), curr_tile) != safe_tiles.end())
+			if (curr_tile == nullptr || std::find(safe_tiles.begin(), safe_tiles.end(), curr_tile) != safe_tiles.end())
 				continue;
 
 			destroy_tile(curr_tile);
@@ -182,7 +186,21 @@ void board::display()
 	const char VERTICAL_PIPE = (char)186;
 	const char HORIZONTAL_PIPE = (char)205;
 
-	std::cout << "\x1b[2J";
+	std::cout << "\x1b[1J";
+	for (player* curr_player : players)
+	{
+		int x = curr_player->get_x();
+		int y = curr_player->get_y();
+		if (x != -1 && y != -1)
+			continue;
+
+		if (x == -1)
+			std::cout << "\x1b[" << y * 3 + 3 << ";" << 6 * 3 + 1 << "H";
+		else if (y == -1)
+			std::cout << "\x1b[0;" << x * 3 + 2 << "H";
+		std::cout << "*";
+	}
+
 	for (int y = 0; y < 6; y++)
 	{
 		for (int x = 0; x < 6; x++)
@@ -192,11 +210,13 @@ void board::display()
 				continue;
 
 			player* standing_player = current_tile->get_standing_player();
+			int curr_tile_y = current_tile->get_y() * 3 + 3;
+			int curr_tile_x = current_tile->get_x() * 3 + 2;
 
 			// move cursor to tile position
 			std::cout << "\x1b[" <<
-				wrap_index(current_tile->get_y()) * 3 + 2 << ";" <<
-				wrap_index(current_tile->get_x()) * 3 + 2 << "f";
+				curr_tile_y << ";" <<
+				curr_tile_x << "f";
 
 			if (standing_player != nullptr)
 			{
@@ -247,6 +267,8 @@ void board::display()
 				else if (corridors[3] && corridors[1] && corridors[0])
 					std::cout << (char)202;
 			}
+			else if (curr_tile_type == wax_eater)
+				std::cout << "X";
 			else
 				std::cout << CROSS_PIPE;
 
@@ -264,8 +286,8 @@ void board::display()
 				};
 
 				std::cout << "\x1b[" <<
-					modulo(current_tile->get_y(), 6) * 3 - corridor_directions[i][1] + 2 << ";" <<
-					modulo(current_tile->get_x(), 6) * 3 + corridor_directions[i][0] + 2 << "f";
+					curr_tile_y - corridor_directions[i][1] << ";" <<
+					curr_tile_x + corridor_directions[i][0] << "f";
 
 				if (corridor)
 				{
@@ -279,10 +301,8 @@ void board::display()
 		}
 		std::cout << std::endl;
 	}
-	std::cout << "\x1b[" << 3 * 6 << ";0f\n";
-	std::cout << "\x1b[2K";
-	std::cout << " 1  2  3  4  5  6  ";
-	std::cout << std::endl;
+	std::cout << "\x1b[" << 3 * 6 + 1 << ";0f" << std::endl;
+	std::cout << "  1  2  3  4  5  6  " << std::endl;
 }
 
 board::board()
