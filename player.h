@@ -1,4 +1,6 @@
-#pragma once
+#ifndef PLAYER_H
+#define PLAYER_H
+
 class player
 {
 	int x;
@@ -22,3 +24,4 @@ public:
 	player(int color);
 };
 
+#endif /* PLAYER_H */

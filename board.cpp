@@ -3,14 +3,6 @@
 #include <algorithm>
 #include "board.h"
 
-int wrap_index(int number)
-{
-	while (number > 5)
-		number -= 6;
-
-	return number;
-}
-
 bool board::valid_index(int x, int y)
 {
 	if ((x < 0 || x > 5) || (y < 0 || y > 5))
@@ -44,6 +36,7 @@ bool board::place_player(player* player_to_place, int x, int y)
 	spot->set_standing_player(player_to_place);
 	player_to_place->set_x(x);
 	player_to_place->set_y(y);
+	return true;
 }
 
 tile* board::get_standing_tile(player* prisoner)
@@ -68,7 +61,7 @@ bool board::move_player(player* player_to_move, int corridor)
 
 	if (
 		!first_tile->get_corridors()[corridor] ||
-		!next_tile->get_corridors()[modulo(corridor + 2, 4)] ||
+		!next_tile->get_corridors()[corridor + 2 % 4] ||
 		next_tile->get_standing_player() != nullptr
 		)
 	{
@@ -88,6 +81,7 @@ bool board::move_player(player* player_to_move, int corridor)
 	display();
 
 	// activate monsters
+	return true;
 }
 
 void board::illuminate(player* lit_player)
@@ -155,7 +149,6 @@ void board::darkness()
 			tile* curr_tile = play_area[y][x];
 			if (curr_tile == nullptr || std::find(safe_tiles.begin(), safe_tiles.end(), curr_tile) != safe_tiles.end())
 				continue;
-
 			destroy_tile(curr_tile);
 		}
 	}

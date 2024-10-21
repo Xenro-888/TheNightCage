@@ -1,4 +1,6 @@
-#pragma once
+#ifndef TILE_H
+#define TILE_H
+
 #include "player.h"
 
 enum tile_type {unspecified, straight_tile, t_tile, cross_tile, key_tile, gate_tile, start_tile, pit_tile, wax_eater};
@@ -31,3 +33,4 @@ public:
 	tile(tile_type type);
 };
 
+#endif /* TILE_H */

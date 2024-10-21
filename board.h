@@ -1,4 +1,6 @@
-#pragma once
+#ifndef BOARD_H
+#define BOARD_H
+
 #include <vector>
 #include "tile.h"
 #include "player.h"
@@ -28,3 +30,4 @@ public:
 	~board();
 };
 
+#endif /* BOARD_H */

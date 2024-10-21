@@ -1,6 +1,6 @@
 #include <iostream>
 #include <string>
-#include <conio.h>
+//#include <conio.h>
 #include "board.h"
 
 void display_plr_turn(player* curr_player)
@@ -9,7 +9,7 @@ void display_plr_turn(player* curr_player)
 	const std::string YELLOW = "\x1b[33m";
 	const std::string PURPLE = "\x1b[35m";
 	const std::string BLUE = "\x1b[34m";
-
+	
 	std::cout << "\x1b[" << 3 * 6 << ";0f\n\n";
 	std::cout << "\x1b[2K";
 	if (curr_player->get_color() == 0)
@@ -18,7 +18,7 @@ void display_plr_turn(player* curr_player)
 		std::cout << YELLOW << "YELLOW'S TURN" << std::endl;
 	else if (curr_player->get_color() == 2)
 		std::cout << PURPLE << "PURPLE'S TURN" << std::endl;
-	else if (curr_player->get_color() == 3)
+	else if (curr_player->get_color() == 3)  
 		std::cout << BLUE << "BLUE'S TURN" << std::endl;
 	std::cout << "\x1b[97m";
 }
@@ -30,70 +30,28 @@ void game_start(board &this_board, std::vector<player*> players)
 	for (player* curr_player : players)
 	{
 		tile* plr_start_tile = new tile(start_tile);
-		int x = 0;
-		int y = 0;
-		int last_x = 0;
-		int last_y = 0;
+		int tile_y = -1;
+		int tile_x = -1;
 
-		// make sure the start tile isn't over an already existing tile
-		for (y; y < y + 6; y = modulo(y + 1, 6))
+		while (!this_board.valid_index(tile_x, tile_y))
 		{
-			for (x; x < x + 6; x = modulo(x + 1, 6))
+			std::cout << "WHERE WOULD YOU LIKE TO PLACE YOUR START TILE?" << std::endl;
+			std::getline(std::cin, player_input);
+			if (player_input.length() == 3)
 			{
-				if (this_board.play_area[y][x] == nullptr)
-					goto place_tile;
+				tile_x = player_input[0] - 49;
+				tile_y = player_input[2] - 49;
 			}
+			//std::cout << tile_x << ", " << tile_y << std::endl;
 		}
-
-	place_tile:
-		this_board.place_tile(plr_start_tile, x, y);
-		this_board.display();
-
-		// player input
-		int key = 0;
-		while (key != 13)
-		{
-			int x_dir = 0;
-			int y_dir = 0;
-			key = _getch();
-
-			if (key == 72)
-			{
-				y = modulo(y - 1, 6);
-				y_dir = 1;
-			}
-			else if (key == 75)
-			{
-				x = modulo(x - 1, 6);
-				x_dir = -1;
-			}
-			else if (key == 80)
-			{
-				y = modulo(y + 1, 6);
-				y_dir = -1;
-			}
-			else if (key == 77)
-			{
-				x = modulo(x + 1, 6);
-				x_dir = 1;
-			}
-			else if (key == 114)
-			{
-				plr_start_tile->rotate();
-				this_board.display();
-			}
-
-			if (x != last_x || y != last_y)
-			{
-				this_board.move_tile(plr_start_tile, x, y);
-				this_board.display();
-			}
-			last_x = x;
-			last_y = y;
-		}
-		this_board.place_player(curr_player, x, y);
+		std::cout << "VALID INDEX!" << std::endl;
+		this_board.place_tile(plr_start_tile, tile_x, tile_y);
+		this_board.place_player(curr_player, tile_x, tile_y);
 		this_board.illuminate(curr_player);
 		this_board.display();
+
+		std::cout << plr_start_tile->get_x() << ", " << plr_start_tile->get_y() << std::endl;
+		std::cin.ignore();
 	}
 }
 
@@ -101,10 +59,11 @@ void start_game()
 {
 	board this_board = board();
 	bool game_over = false;
+
 	for (int i = 0; i < 4; i++)
 		this_board.players.push_back(new player(i));
-
 	game_start(this_board, this_board.players);
+
 	while (!game_over)
 	{
 		for (player* curr_player : this_board.players)
@@ -116,27 +75,24 @@ void start_game()
 			while (player_input != "M" && player_input != "S")
 			{
 				std::cout << "WHAT WOULD YOU LIKE TO DO?\nM: MOVE | S: STAY\n";
+				std::cin >> player_input;
 				std::getline(std::cin, player_input);
+				std::cin.ignore();
 			}
+			player_input.clear();
 
 			if (player_input == "M")
 			{
 				bool moved = false;
 				while (!moved) {
-					int corridor = -1;
-					std::cout << "USE THE ARROW KEYS TO ENTER THE CORRIDOR YOU'D LIKE TO GO DOWN.\n";
+					std::cout << "WHICH CORRIDOR WOULD YOU LIKE TO GO DOWN?" << std::endl;
+					std::cout << "UP: 0 | LEFT: 1 | DOWN: 2 | RIGHT: 3" << std::endl;
+					std::getline(std::cin, player_input);
 
-					while (corridor < 0)
+					int corridor = -1;
+					while (corridor < 0 || corridor > 3)
 					{
-						int key = _getch();
-						if (key == 72)
-							corridor = 0;
-						else if (key == 75)
-							corridor = 1;
-						else if (key == 80)
-							corridor = 2;
-						else if (key == 77)
-							corridor = 3;
+						corridor = std::stoi(player_input);
 					}
 					moved = this_board.move_player(curr_player, corridor);
 				}

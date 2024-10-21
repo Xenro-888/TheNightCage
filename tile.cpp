@@ -37,7 +37,6 @@ tile::tile(tile_type type)
 	standing_player = nullptr;
 	x = 0;
 	y = 0;
-
 	this->type = type;
 
 	if (type == straight_tile)
