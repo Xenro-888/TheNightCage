@@ -1,11 +1,12 @@
 #include <iostream>
+#include <array>
 #include "tile.h"
 
 int modulo(int num, int div) { return num = ((num % div) + div) % div; }
 
 int tile::get_x() { return x; }
 int tile::get_y() { return y; }
-int* tile::get_corridors() { return corridors; }
+std::array<bool, 4> tile::get_corridors() { return corridors; }
 tile_type tile::get_type() { return type; }
 player* tile::get_standing_player() { return standing_player; }
 
@@ -53,7 +54,7 @@ tile::tile(tile_type type)
 		corridors[2] = 1;
 		corridors[3] = 0;
 	}
-	else if (type == cross_tile || type == gate_tile || type == pit_tile || type == key_tile)
+	else if (type == cross_tile || type == gate_tile || type == pit_tile || type == key_tile || type == wax_eater)
 	{
 		for (int i = 0; i < 4; i++)
 			corridors[i] = 1;

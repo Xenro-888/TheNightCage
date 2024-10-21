@@ -42,12 +42,14 @@ void game_start(board &this_board, std::vector<player*> players)
 				tile_x = player_input[0] - 49;
 				tile_y = player_input[2] - 49;
 			}
-			//std::cout << tile_x << ", " << tile_y << std::endl;
 		}
-		std::cout << "VALID INDEX!" << std::endl;
+		std::cout << "VALID INDEX!\n";
 		this_board.place_tile(plr_start_tile, tile_x, tile_y);
+		std::cout << "TILE PLACED!\n";
 		this_board.place_player(curr_player, tile_x, tile_y);
+		std::cout << "PLAYER PLACED!\n";
 		this_board.illuminate(curr_player);
+		std::cout << "ILLUMINATED PLAYER!\n";
 		this_board.display();
 
 		std::cout << plr_start_tile->get_x() << ", " << plr_start_tile->get_y() << std::endl;

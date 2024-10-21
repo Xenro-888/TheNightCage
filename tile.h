@@ -1,6 +1,7 @@
 #ifndef TILE_H
 #define TILE_H
 
+#include <array>
 #include "player.h"
 
 enum tile_type {unspecified, straight_tile, t_tile, cross_tile, key_tile, gate_tile, start_tile, pit_tile, wax_eater};
@@ -11,7 +12,7 @@ class tile
 {
 	int x;
 	int y;
-	int corridors[4];
+	std::array<bool, 4> corridors;
 	tile_type type;
 	player* standing_player;
 
@@ -19,7 +20,7 @@ public:
 
 	int get_x();
 	int get_y();
-	int* get_corridors();
+	std::array<bool, 4> get_corridors();
 	tile_type get_type();
 	int is_cracked();
 	player* get_standing_player();

@@ -94,26 +94,31 @@ void board::illuminate(player* lit_player)
 
 	for (int corridor = 0; corridor < 4; corridor++)
 	{
-		int* curr_corridor = corridor_directions[corridor];
-		int tile_x = modulo(lit_player->get_x() + curr_corridor[0], 6);
-		int tile_y = modulo(lit_player->get_y() + curr_corridor[1], 6);
-
-		if (!standing_tile->get_corridors()[corridor])
-			continue;
-
-		if (play_area[tile_y][tile_x] != nullptr)
-			continue;
-
+		int* curr_corr_direction = corridor_directions[corridor];
 		int new_tile_type = -1;
+		int new_tile_x = (lit_player->get_x() + curr_corr_direction[0]) % 6;
+		int new_tile_y = (lit_player->get_y() + curr_corr_direction[1]) % 6;
+		tile* adj_tile = play_area[new_tile_y][new_tile_x];
+
+		if (!standing_tile->get_corridors()[corridor] || adj_tile != nullptr)
+			continue;
+
 		while (new_tile_type < 0 || new_tile_type == 6)
+		{
+			std::cout << "TILE TYPE LOOP!\n";
 			new_tile_type = rand() % 8 + 1;
+		}
 
 		tile* new_tile = new tile((tile_type)new_tile_type);
-		int* tile_corridors = new_tile->get_corridors();
-		place_tile(new_tile, tile_x, tile_y);
+		std::array<bool, 4> tile_corridors = new_tile->get_corridors();
+		std::cout << new_tile_x << ", " << new_tile_y << '\n';
+		place_tile(new_tile, new_tile_x, new_tile_y);
 
-		while (!tile_corridors[modulo(corridor + 2, 4)])
+		while (!tile_corridors[(corridor + 2) % 6])
+		{
+			std::cout << "MAKING SURE NEXT TILE CONNECTS LOOP!\n";
 			new_tile->rotate();
+		}
 	}
 }
 
@@ -175,6 +180,7 @@ void board::destroy_tile(tile* tile_to_destroy)
 
 void board::display()
 {
+	std::cout << "DISPLAYING!\n";
 	const char CROSS_PIPE = (char)206;
 	const char VERTICAL_PIPE = (char)186;
 	const char HORIZONTAL_PIPE = (char)205;
@@ -193,27 +199,32 @@ void board::display()
 			std::cout << "\x1b[0;" << x * 3 + 2 << "H";
 		std::cout << "*";
 	}
+	std::cout << "DISPLAYED FALLING PLAYERS!\n";
 
 	for (int y = 0; y < 6; y++)
 	{
 		for (int x = 0; x < 6; x++)
 		{
 			tile* current_tile = play_area[y][x];
+			std::array<bool, 4> corridors = current_tile->get_corridors();
+			tile_type curr_tile_type = current_tile->get_type();
+			player* standing_player = current_tile->get_standing_player();
+
+			int curr_tile_console_x = current_tile->get_x() * 3 + 2;
+			int curr_tile_console_y = current_tile->get_y() * 3 + 3;
+
 			if (current_tile == nullptr)
 				continue;
 
-			player* standing_player = current_tile->get_standing_player();
-			int curr_tile_y = current_tile->get_y() * 3 + 3;
-			int curr_tile_x = current_tile->get_x() * 3 + 2;
-
 			// move cursor to tile position
 			std::cout << "\x1b[" <<
-				curr_tile_y << ";" <<
-				curr_tile_x << "f";
+				curr_tile_console_y << ";" <<
+				curr_tile_console_x << "f";
 
 			if (standing_player != nullptr)
 			{
 				int color = standing_player->get_color();
+
 				if (color == 0)
 					std::cout << "\x1b[32m";
 				else if (color == 1)
@@ -223,7 +234,7 @@ void board::display()
 				else if (color == 3)
 					std::cout << "\x1b[34m";
 			}
-			else if (current_tile->get_type() == pit_tile)
+			else if (curr_tile_type == pit_tile)
 				std::cout << "\x1b[90m";
 			else if (current_tile->is_cracked())
 			{
@@ -231,14 +242,12 @@ void board::display()
 			}
 
 			// draw center of tile
-			tile_type curr_tile_type = current_tile->get_type();
 			if (curr_tile_type == pit_tile)
 				std::cout << (char)178;
 			else if (curr_tile_type == straight_tile)
-				std::cout << (current_tile->get_corridors()[0] ? VERTICAL_PIPE : HORIZONTAL_PIPE);
+				std::cout << (corridors[0] ? VERTICAL_PIPE : HORIZONTAL_PIPE);
 			else if (curr_tile_type == start_tile)
 			{
-				int* corridors = current_tile->get_corridors();
 				if (corridors[0] && corridors[1])
 					std::cout << (char)188;
 				else if (corridors[1] && corridors[2])
@@ -250,7 +259,6 @@ void board::display()
 			}
 			else if (curr_tile_type == t_tile)
 			{
-				int* corridors = current_tile->get_corridors();
 				if (corridors[0] && corridors[1] && corridors[2])
 					std::cout << (char)185;
 				else if (corridors[1] && corridors[2] && corridors[3])
@@ -265,12 +273,12 @@ void board::display()
 			else
 				std::cout << CROSS_PIPE;
 
+			/*
 			std::cout << "\x1b[38;5;241m"; // set color to white
 			// draw corridors
-			int* tile_corridors = current_tile->get_corridors();
 			for (int i = 0; i < 4; i++)
 			{
-				int corridor = tile_corridors[i];
+				int corridor = corridors[i];
 				int corridor_directions[][2] = {
 					{0, 1},
 					{-1, 0},
@@ -279,8 +287,8 @@ void board::display()
 				};
 
 				std::cout << "\x1b[" <<
-					curr_tile_y - corridor_directions[i][1] << ";" <<
-					curr_tile_x + corridor_directions[i][0] << "f";
+					curr_tile_console_y - corridor_directions[i][1] << ";" <<
+					curr_tile_console_x + corridor_directions[i][0] << "f";
 
 				if (corridor)
 				{
@@ -290,6 +298,7 @@ void board::display()
 						std::cout << HORIZONTAL_PIPE;
 				}
 			}
+			*/
 			std::cout << "\x1b[38;5;248m";
 		}
 		std::cout << std::endl;
