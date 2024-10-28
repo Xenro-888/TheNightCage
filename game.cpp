@@ -45,7 +45,7 @@ void place_start_tiles(board& this_board, std::vector<player> players)
 				tile_y = player_input[2] - 49;
 			}
 		}
-		this_board.place_tile(*plr_start_tile, tile_x, tile_y);
+		this_board.place_tile(plr_start_tile, tile_x, tile_y);
 		this_board.place_player(curr_player, tile_x, tile_y);
 		//this_board.illuminate(curr_player);
 		this_board.display();

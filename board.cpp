@@ -1,7 +1,10 @@
 #include <iostream>
 #include <vector>
+#include <memory>
 #include <algorithm>
 #include "board.h"
+
+using std::array, std::shared_ptr, std::vector;
 
 int modulo(int number, int divisor)
 {
@@ -20,11 +23,11 @@ bool board::valid_index(int x, int y)
 	return true;
 }
 
-void board::place_tile(tile& tile_to_place, int x, int y)
+void board::place_tile(shared_ptr<tile> tile_to_place, int x, int y)
 {
-	play_area[y][x] = std::make_shared<tile>(tile_to_place);
-	tile_to_place.set_x(x);
-	tile_to_place.set_y(y);
+	play_area[y][x] = tile_to_place;
+	tile_to_place->set_x(x);
+	tile_to_place->set_y(y);
 }
 
 bool board::place_player(player& player_to_place, int x, int y)
@@ -119,33 +122,35 @@ void board::illuminate(player& lit_player)
 		{
 			new_tile_type = (tile_type)(rand() % 8);
 		}
-		tile* new_tile = new tile(new_tile_type);
-		place_tile(*new_tile, adjacent_spot_x, adjacent_spot_y);
+
+		// create and place new tile
+		shared_ptr<tile> new_tile = std::make_shared<tile>(tile(new_tile_type));
+		place_tile(new_tile, adjacent_spot_x, adjacent_spot_y);
 	}
 }
 
 void board::darkness()
 {
-	std::vector<tile> safe_tiles;
+	vector<shared_ptr<tile>> safe_tiles;
 	int corridor_directions[][2] = { {0, -1}, {-1, 0}, {0, 1}, {1, 0} };
 
 	for (player& curr_player : players)
 	{
-		std::shared_ptr<tile> standing_tile = get_standing_tile(curr_player);
+		shared_ptr<tile> standing_tile = get_standing_tile(curr_player);
 		int player_x = curr_player.get_x();
 		int player_y = curr_player.get_y();
 
 		if (!curr_player.is_lit() || curr_player.is_falling())
 			continue;
 
-		safe_tiles.push_back(*standing_tile);
+		safe_tiles.push_back(standing_tile);
 		for (int corridor = 0; corridor < 4; corridor++)
 		{
 			if (!standing_tile->get_corridors()[corridor])
 				continue;
 
-			std::shared_ptr<tile> adj_tile = get_adj_tile(player_x, player_y, corridor);
-			safe_tiles.push_back(*adj_tile);
+			shared_ptr<tile> adj_tile = get_adj_tile(player_x, player_y, corridor);
+			safe_tiles.push_back(adj_tile);
 		}
 	}
 
@@ -154,10 +159,15 @@ void board::darkness()
 		for (int x = 0; x < 6; x++)
 		{
 			std::shared_ptr<tile> curr_tile = play_area[y][x];
-			if (curr_tile == nullptr || std::find(safe_tiles.begin(), safe_tiles.end(), *curr_tile) != safe_tiles.end())
+			auto found = std::find_if(
+				safe_tiles.begin(), safe_tiles.end(), 
+				[&curr_tile](const shared_ptr<tile> tile) { return tile.get() == curr_tile.get(); }
+			);
+	
+			if (curr_tile == nullptr || found != safe_tiles.end())
 				continue;
 				
-			destroy_tile(*curr_tile);
+			destroy_tile(curr_tile);
 		}
 	}
 }
@@ -175,9 +185,9 @@ void board::move_tile(std::shared_ptr<tile> tile_to_move, int x, int y)
 	tile_to_move->set_y(y);
 }
 
-void board::destroy_tile(tile& tile_to_destroy)
+void board::destroy_tile(shared_ptr<tile> tile_to_destroy)
 {
-	play_area[tile_to_destroy.get_y()][tile_to_destroy.get_x()] = nullptr;
+	play_area[tile_to_destroy->get_y()][tile_to_destroy->get_x()] = nullptr;
 }
 
 void board::display()
@@ -192,7 +202,7 @@ void board::display()
 		{
 			std::shared_ptr<tile> current_tile = play_area[y][x];
 
-			if (current_tile == nullptr)
+			if (current_tile.get() == nullptr)
 				continue;
 				
 			tile_type current_tile_type = current_tile->get_type();
