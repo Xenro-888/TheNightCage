@@ -97,12 +97,14 @@ void start_game()
 	{
 		this_board.players.push_back(player(i));
 	}
+
+	// start tiles
 	place_start_tiles(this_board, this_board.players);
 
 	// main game loop
 	while (!game_over)
 	{
-		for (player current_player : this_board.players)
+		for (player& current_player : this_board.players)
 		{
 			std::shared_ptr<tile> current_tile = this_board.play_area[current_player.get_y()][current_player.get_x()];
 			player_turn(current_player, this_board);

@@ -201,7 +201,6 @@ void board::display()
 		for (int x = 0; x < 6; x++)
 		{
 			std::shared_ptr<tile> current_tile = play_area[y][x];
-
 			if (current_tile.get() == nullptr)
 				continue;
 				
