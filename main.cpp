@@ -6,6 +6,7 @@
 
 int main()
 {
+    std::cout << -1 % 6 + 6 << "\n";
     start_game();
 }
 

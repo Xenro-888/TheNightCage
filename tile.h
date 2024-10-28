@@ -20,7 +20,7 @@ public:
 
 	int get_x();
 	int get_y();
-	std::array<bool, 4> get_corridors();
+	std::array<bool, 4>& get_corridors();
 	tile_type get_type();
 	int is_cracked();
 	player* get_standing_player();

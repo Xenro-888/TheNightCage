@@ -2,11 +2,9 @@
 #include <array>
 #include "tile.h"
 
-int modulo(int num, int div) { return num = ((num % div) + div) % div; }
-
 int tile::get_x() { return x; }
 int tile::get_y() { return y; }
-std::array<bool, 4> tile::get_corridors() { return corridors; }
+std::array<bool, 4>& tile::get_corridors() { return corridors; }
 tile_type tile::get_type() { return type; }
 player* tile::get_standing_player() { return standing_player; }
 
@@ -18,7 +16,9 @@ void tile::rotate()
 {
 	int first_corridor = corridors[0];
 	for (int i = 0; i < 3; i++)
+	{
 		corridors[i] = corridors[modulo(i + 1, 4)];
+	}
 	corridors[3] = first_corridor;
 }
 

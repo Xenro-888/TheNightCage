@@ -3,6 +3,15 @@
 #include <algorithm>
 #include "board.h"
 
+int modulo(int number, int divisor)
+{
+	int result = number % divisor;
+	if (result < 0)
+		result += divisor;
+
+	return result;
+}
+
 bool board::valid_index(int x, int y)
 {
 	if ((x < 0 || x > 5) || (y < 0 || y > 5))
@@ -11,53 +20,58 @@ bool board::valid_index(int x, int y)
 	return true;
 }
 
-void board::place_tile(tile* tile_to_place, int x, int y)
+void board::place_tile(tile& tile_to_place, int x, int y)
 {
-	if ((x < 0 || x > 5) || (y < 0 || y > 5))
-		return;
-
-	if (play_area[y][x] != nullptr)
-		return;
-
-	play_area[y][x] = tile_to_place;
-	tile_to_place->set_x(x);
-	tile_to_place->set_y(y);
+	play_area[y][x] = std::make_shared<tile>(tile_to_place);
+	tile_to_place.set_x(x);
+	tile_to_place.set_y(y);
 }
 
-bool board::place_player(player* player_to_place, int x, int y)
+bool board::place_player(player& player_to_place, int x, int y)
 {
 	if (!valid_index(x, y))
 		return false;
 
-	tile* spot = play_area[y][x];
+	std::shared_ptr<tile> spot = play_area[y][x];
 	if (spot->get_standing_player() != nullptr)
 		return false;
 
-	spot->set_standing_player(player_to_place);
-	player_to_place->set_x(x);
-	player_to_place->set_y(y);
+	spot->set_standing_player(&player_to_place);
+	player_to_place.set_x(x);
+	player_to_place.set_y(y);
 	return true;
 }
 
-tile* board::get_standing_tile(player* prisoner)
+std::shared_ptr<tile> board::get_standing_tile(player& prisoner)
 {
-	return play_area[prisoner->get_y()][prisoner->get_x()];
+	return play_area[prisoner.get_y()][prisoner.get_x()];
 }
 
-tile* board::get_adj_tile(int x, int y, int corridor)
+std::shared_ptr<tile> board::get_adj_tile(int x, int y, int corridor)
 {
-	int corridor_directions[][2] = { {0, -1}, {-1, 0}, {0, 1}, {1, 0} };
-	tile* adj_tile = play_area
+	std::array<std::array<int, 2>, 4> corridor_directions = get_corridor_directions();
+	std::shared_ptr<tile> adj_tile = play_area
 		[modulo(y + corridor_directions[corridor][1], 6)]
 		[modulo(x + corridor_directions[corridor][0], 6)];
 
 	return adj_tile;
 }
 
-bool board::move_player(player* player_to_move, int corridor) 
+std::array<std::array<int, 2>, 4> board::get_corridor_directions()
 {
-	tile* first_tile = play_area[player_to_move->get_y()][player_to_move->get_x()];
-	tile* next_tile = get_adj_tile(first_tile->get_x(), first_tile->get_y(), corridor);
+	std::array<std::array<int, 2>, 4> corridor_directions;
+	corridor_directions[0] = {0, -1};
+	corridor_directions[1] = {-1, 0};
+	corridor_directions[2] = {0, 1};
+	corridor_directions[3] = {1, 0};
+
+	return corridor_directions;
+}
+
+bool board::move_player(player& player_to_move, int corridor) 
+{
+	std::shared_ptr<tile> first_tile = play_area[player_to_move.get_y()][player_to_move.get_x()];
+	std::shared_ptr<tile> next_tile = get_adj_tile(first_tile->get_x(), first_tile->get_y(), corridor);
 
 	if (
 		!first_tile->get_corridors()[corridor] ||
@@ -65,17 +79,17 @@ bool board::move_player(player* player_to_move, int corridor)
 		next_tile->get_standing_player() != nullptr
 		)
 	{
-		return false;
+		return false;   
 	}
 
 	first_tile->set_standing_player(nullptr);
-	player_to_move->set_x(next_tile->get_x());
-	player_to_move->set_y(next_tile->get_y());
+	player_to_move.set_x(next_tile->get_x());
+	player_to_move.set_y(next_tile->get_y());
 
 	if (next_tile->get_type() != pit_tile)
-		next_tile->set_standing_player(player_to_move);
+		next_tile->set_standing_player(&player_to_move);
 
-	if (player_to_move->is_lit())
+	if (player_to_move.is_lit())
 		illuminate(player_to_move);
 	darkness();
 	display();
@@ -84,66 +98,54 @@ bool board::move_player(player* player_to_move, int corridor)
 	return true;
 }
 
-void board::illuminate(player* lit_player)
+void board::illuminate(player& lit_player)
 {
-	if (lit_player->is_falling())
-		return;
-
-	tile* standing_tile = get_standing_tile(lit_player);
-	int corridor_directions[][2] = { {0, -1}, {-1, 0}, {0, 1}, {1, 0} };
-
+	std::shared_ptr<tile> current_standing_tile = get_standing_tile(lit_player);
+	std::array<bool, 4> current_tile_corridors = current_standing_tile->get_corridors();
+	std::array<std::array<int, 2>, 4> corridor_directions = get_corridor_directions();
+	
 	for (int corridor = 0; corridor < 4; corridor++)
 	{
-		int* curr_corr_direction = corridor_directions[corridor];
-		int new_tile_type = -1;
-		int new_tile_x = (lit_player->get_x() + curr_corr_direction[0]) % 6;
-		int new_tile_y = (lit_player->get_y() + curr_corr_direction[1]) % 6;
-		tile* adj_tile = play_area[new_tile_y][new_tile_x];
+		std::array<int, 2> current_corridor_direction = corridor_directions[corridor];
+		int adjacent_spot_x = modulo(lit_player.get_x() + current_corridor_direction[0], 6);
+		int adjacent_spot_y = modulo(lit_player.get_y() + current_corridor_direction[1], 6);
 
-		if (!standing_tile->get_corridors()[corridor] || adj_tile != nullptr)
+		if (!current_tile_corridors[corridor] || play_area[adjacent_spot_y][adjacent_spot_x] != nullptr)
 			continue;
 
-		while (new_tile_type < 0 || new_tile_type == 6)
+		// select new tile type
+		tile_type new_tile_type = (tile_type)0;
+		while (new_tile_type == unspecified || new_tile_type == start_tile)
 		{
-			std::cout << "TILE TYPE LOOP!\n";
-			new_tile_type = rand() % 8 + 1;
+			new_tile_type = (tile_type)(rand() % 8);
 		}
-
-		tile* new_tile = new tile((tile_type)new_tile_type);
-		std::array<bool, 4> tile_corridors = new_tile->get_corridors();
-		std::cout << new_tile_x << ", " << new_tile_y << '\n';
-		place_tile(new_tile, new_tile_x, new_tile_y);
-
-		while (!tile_corridors[(corridor + 2) % 6])
-		{
-			std::cout << "MAKING SURE NEXT TILE CONNECTS LOOP!\n";
-			new_tile->rotate();
-		}
+		tile* new_tile = new tile(new_tile_type);
+		place_tile(*new_tile, adjacent_spot_x, adjacent_spot_y);
 	}
 }
 
 void board::darkness()
 {
-	std::vector<tile*> safe_tiles;
+	std::vector<tile> safe_tiles;
 	int corridor_directions[][2] = { {0, -1}, {-1, 0}, {0, 1}, {1, 0} };
 
-	for (player* curr_player : players)
+	for (player& curr_player : players)
 	{
-		tile* standing_tile = get_standing_tile(curr_player);
-		int player_x = curr_player->get_x();
-		int player_y = curr_player->get_y();
+		std::shared_ptr<tile> standing_tile = get_standing_tile(curr_player);
+		int player_x = curr_player.get_x();
+		int player_y = curr_player.get_y();
 
-		if (!curr_player->is_lit() || curr_player->is_falling())
+		if (!curr_player.is_lit() || curr_player.is_falling())
 			continue;
 
-		safe_tiles.push_back(standing_tile);
+		safe_tiles.push_back(*standing_tile);
 		for (int corridor = 0; corridor < 4; corridor++)
 		{
 			if (!standing_tile->get_corridors()[corridor])
 				continue;
 
-			tile* adj_tile = get_adj_tile(player_x, player_y, corridor);
-			safe_tiles.push_back(adj_tile);
+			std::shared_ptr<tile> adj_tile = get_adj_tile(player_x, player_y, corridor);
+			safe_tiles.push_back(*adj_tile);
 		}
 	}
 
@@ -151,15 +153,16 @@ void board::darkness()
 	{
 		for (int x = 0; x < 6; x++)
 		{
-			tile* curr_tile = play_area[y][x];
-			if (curr_tile == nullptr || std::find(safe_tiles.begin(), safe_tiles.end(), curr_tile) != safe_tiles.end())
+			std::shared_ptr<tile> curr_tile = play_area[y][x];
+			if (curr_tile == nullptr || std::find(safe_tiles.begin(), safe_tiles.end(), *curr_tile) != safe_tiles.end())
 				continue;
-			destroy_tile(curr_tile);
+				
+			destroy_tile(*curr_tile);
 		}
 	}
 }
 
-void board::move_tile(tile* tile_to_move, int x, int y)
+void board::move_tile(std::shared_ptr<tile> tile_to_move, int x, int y)
 {
 	if (play_area[y][x] != nullptr)
 		return;
@@ -172,163 +175,58 @@ void board::move_tile(tile* tile_to_move, int x, int y)
 	tile_to_move->set_y(y);
 }
 
-void board::destroy_tile(tile* tile_to_destroy)
+void board::destroy_tile(tile& tile_to_destroy)
 {
-	play_area[tile_to_destroy->get_y()][tile_to_destroy->get_x()] = nullptr;
-	delete tile_to_destroy;
+	play_area[tile_to_destroy.get_y()][tile_to_destroy.get_x()] = nullptr;
 }
 
 void board::display()
 {
-	std::cout << "DISPLAYING!\n";
-	const char CROSS_PIPE = (char)206;
-	const char VERTICAL_PIPE = (char)186;
-	const char HORIZONTAL_PIPE = (char)205;
-
-	std::cout << "\x1b[1J";
-	for (player* curr_player : players)
-	{
-		int x = curr_player->get_x();
-		int y = curr_player->get_y();
-		if (x != -1 && y != -1)
-			continue;
-
-		if (x == -1)
-			std::cout << "\x1b[" << y * 3 + 3 << ";" << 6 * 3 + 1 << "H";
-		else if (y == -1)
-			std::cout << "\x1b[0;" << x * 3 + 2 << "H";
-		std::cout << "*";
-	}
-	std::cout << "DISPLAYED FALLING PLAYERS!\n";
+	const int TILE_SIZE = 3;
+	std::cout << "| THE NIGHT CAGE |\n";
+	std::cout << "\x1b[2J"; // clear screen
 
 	for (int y = 0; y < 6; y++)
 	{
 		for (int x = 0; x < 6; x++)
 		{
-			tile* current_tile = play_area[y][x];
-			std::array<bool, 4> corridors = current_tile->get_corridors();
-			tile_type curr_tile_type = current_tile->get_type();
-			player* standing_player = current_tile->get_standing_player();
-
-			int curr_tile_console_x = current_tile->get_x() * 3 + 2;
-			int curr_tile_console_y = current_tile->get_y() * 3 + 3;
+			std::shared_ptr<tile> current_tile = play_area[y][x];
 
 			if (current_tile == nullptr)
 				continue;
+				
+			tile_type current_tile_type = current_tile->get_type();
+			int tile_console_x = current_tile->get_x() * TILE_SIZE + 1;
+			int tile_console_y = current_tile->get_y() * TILE_SIZE + 1;
+			std::cout << "\x1b[" << tile_console_y << ";" << tile_console_x << "H"; // set cursor position to the tile's console position
 
-			// move cursor to tile position
-			std::cout << "\x1b[" <<
-				curr_tile_console_y << ";" <<
-				curr_tile_console_x << "f";
-
-			if (standing_player != nullptr)
-			{
-				int color = standing_player->get_color();
-
-				if (color == 0)
-					std::cout << "\x1b[32m";
-				else if (color == 1)
-					std::cout << "\x1b[33m";
-				else if (color == 2)
-					std::cout << "\x1b[35m";
-				else if (color == 3)
-					std::cout << "\x1b[34m";
-			}
-			else if (curr_tile_type == pit_tile)
-				std::cout << "\x1b[90m";
-			else if (current_tile->is_cracked())
-			{
-				//std::cout << "\x1b[91m";
-			}
-
-			// draw center of tile
-			if (curr_tile_type == pit_tile)
-				std::cout << (char)178;
-			else if (curr_tile_type == straight_tile)
-				std::cout << (corridors[0] ? VERTICAL_PIPE : HORIZONTAL_PIPE);
-			else if (curr_tile_type == start_tile)
-			{
-				if (corridors[0] && corridors[1])
-					std::cout << (char)188;
-				else if (corridors[1] && corridors[2])
-					std::cout << (char)187;
-				else if (corridors[2] && corridors[3])
-					std::cout << (char)201;
-				else if (corridors[3] && corridors[4])
-					std::cout << (char)200;
-			}
-			else if (curr_tile_type == t_tile)
-			{
-				if (corridors[0] && corridors[1] && corridors[2])
-					std::cout << (char)185;
-				else if (corridors[1] && corridors[2] && corridors[3])
-					std::cout << (char)203;
-				else if (corridors[2] && corridors[3] && corridors[0])
-					std::cout << (char)204;
-				else if (corridors[3] && corridors[1] && corridors[0])
-					std::cout << (char)202;
-			}
-			else if (curr_tile_type == wax_eater)
-				std::cout << "X";
+			// display center of tile
+			if (current_tile_type == pit_tile)
+				std::cout << "0";
 			else
-				std::cout << CROSS_PIPE;
+				std::cout << "+";
 
-			/*
-			std::cout << "\x1b[38;5;241m"; // set color to white
-			// draw corridors
-			for (int i = 0; i < 4; i++)
-			{
-				int corridor = corridors[i];
-				int corridor_directions[][2] = {
-					{0, 1},
-					{-1, 0},
-					{0, -1},
-					{1, 0}
-				};
-
-				std::cout << "\x1b[" <<
-					curr_tile_console_y - corridor_directions[i][1] << ";" <<
-					curr_tile_console_x + corridor_directions[i][0] << "f";
-
-				if (corridor)
-				{
-					if (i % 2 == 0)
-						std::cout << VERTICAL_PIPE;
-					else
-						std::cout << HORIZONTAL_PIPE;
-				}
-			}
-			*/
-			std::cout << "\x1b[38;5;248m";
+			// display tile corridors
 		}
-		std::cout << std::endl;
 	}
-	std::cout << "\x1b[" << 3 * 6 + 1 << ";0f" << std::endl;
-	std::cout << "  1  2  3  4  5  6  " << std::endl;
+
+	// move cursor to under the displayed board
+	std::cout << "\x1b[" << TILE_SIZE * 6 + TILE_SIZE - 2 << ";" << TILE_SIZE * 6 + TILE_SIZE - 2 << "H";
 }
 
 board::board()
 {
-	for (int i = 0; i < 6; i++)
+	for (int y = 0; y < 6; y++)
 	{
-		for (int j = 0; j < 6; j++)
+		for (int x = 0; x < 6; x++)
 		{
-			play_area[i][j] = nullptr;
+			play_area[y][x] = nullptr;
 		}
 	}
 }
 
+// defenition isn't needed currently as shared pointers will be deallocated at the end of the program
 board::~board()
 {
-	for (int i = 0; i < 6; i++)
-	{
-		for (int j = 0; j < 6; j++)
-		{
-			tile* tile = play_area[i][j];
-			if (tile == nullptr)
-				continue;
-
-			delete play_area[i][j];
-		}
-	}
+	
 }
