@@ -81,10 +81,14 @@ bool board::move_player(player& player_to_move, int corridor)
 
 void board::illuminate(player& lit_player)
 {
+	array<bool, 4> current_tile_corridors = get_standing_tile(lit_player).get()->get_corridors();
 	array<array<int, 2>, 4> corridor_directions = get_corridor_directions();
 	
 	for (int corridor = 0; corridor < 4; corridor++)
 	{
+		if (!current_tile_corridors[corridor])
+			continue;	
+
 		array<int, 2>& current_corridor_direction = corridor_directions[corridor];
 		shared_ptr<tile> adjacent_spot = get_adj_tile(lit_player.get_x(), lit_player.get_y(), corridor);
 		int adjacent_spot_x = modulo(lit_player.get_x() + current_corridor_direction[0], 6);
@@ -173,11 +177,25 @@ void board::display()
 				continue;
 				
 			tile_type current_tile_type = current_tile->get_type();
-			int tile_console_x = current_tile->get_x() * TILE_SIZE + 1;
-			int tile_console_y = current_tile->get_y() * TILE_SIZE + 1;
+			int tile_console_x = current_tile->get_x() * TILE_SIZE + 2;
+			int tile_console_y = current_tile->get_y() * TILE_SIZE + 2;
 			std::cout << "\x1b[" << tile_console_y << ";" << tile_console_x << "H"; // set cursor position to the tile's console position
 
 			// display center of tile
+			player* standing_player = current_tile.get()->get_standing_player();
+			if (standing_player != nullptr)
+			{
+				int player_color = standing_player->get_color();
+				if (player_color == 0)
+					std::cout << "\x1b[32m";
+				else if (player_color == 1)
+					std::cout << "\x1b[33m";
+				else if (player_color == 2)
+					std::cout << "\x1b[34m";
+				else if (player_color == 3)
+					std::cout << "\x1b[31m";
+			}
+
 			if (current_tile_type == pit_tile)
 				std::cout << "0";
 			else
@@ -185,7 +203,7 @@ void board::display()
 
 			// display tile corridors
 			array<array<int, 2>, 4> corridor_directions = get_corridor_directions();
-
+			std::cout << "\x1b[37m"; // reset cursor color back to white
 			for (int corridor = 0; corridor < 4; corridor++)
 			{
 				array<int, 2>& current_corridor_direction = corridor_directions[corridor];
@@ -198,13 +216,9 @@ void board::display()
 					tile_console_x + current_corridor_direction[0] << "H";
 
 				if (corridor % 2 == 0)
-				{
 					std::cout << "|";
-				}
 				else
-				{
 					std::cout << "-";
-				}
 			}
 		}
 	}
