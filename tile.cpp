@@ -4,7 +4,7 @@
 
 int tile::get_x() { return x; }
 int tile::get_y() { return y; }
-std::array<bool, 4>& tile::get_corridors() { return corridors; }
+std::array<bool, 4> tile::get_corridors() { return corridors; }
 tile_type tile::get_type() { return type; }
 player* tile::get_standing_player() { return standing_player; }
 

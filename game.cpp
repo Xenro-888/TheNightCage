@@ -25,11 +25,11 @@ void display_player_turn(player& current_player)
 	std::cout << "\x1b[97m";
 }
 
-void place_start_tiles(board& this_board, std::vector<player> players)
+void place_start_tiles(board& this_board, std::vector<player>& players)
 {
 	std::string player_input;
 
-	for (player curr_player : players)
+	for (player& curr_player : players)
 	{
 		std::shared_ptr<tile> plr_start_tile = std::make_shared<tile>(tile(start_tile));
 		int tile_y = -1;
@@ -37,7 +37,8 @@ void place_start_tiles(board& this_board, std::vector<player> players)
 
 		while (!this_board.valid_index(tile_x, tile_y))
 		{
-			std::cout << "WHERE WOULD YOU LIKE TO PLACE YOUR START TILE?" << std::endl;
+			std::cout << "WHERE WOULD YOU LIKE TO PLACE YOUR START TILE?\n";
+			std::cout << "(X COORDINATE, Y COORDINATE)\n";
 			std::getline(std::cin, player_input);
 			if (player_input.length() == 3)
 			{
@@ -47,7 +48,7 @@ void place_start_tiles(board& this_board, std::vector<player> players)
 		}
 		this_board.place_tile(plr_start_tile, tile_x, tile_y);
 		this_board.place_player(curr_player, tile_x, tile_y);
-		//this_board.illuminate(curr_player);
+		this_board.illuminate(curr_player);
 		this_board.display();
 	}
 }
@@ -59,6 +60,7 @@ void player_turn(player& current_player, board& this_board)
 	display_player_turn(current_player);
 	while (player_input != "MOVE" && player_input != "STAY")
 	{
+		// get player input
 		std::cout << "WHAT WOULD YOU LIKE TO DO?\n";
 		std::cout << "MOVE OR STAY\n";
 		std::getline(std::cin, player_input);
@@ -98,7 +100,7 @@ void start_game()
 		this_board.players.push_back(player(i));
 	}
 
-	// start tiles
+	// start of game
 	place_start_tiles(this_board, this_board.players);
 
 	// main game loop
@@ -106,7 +108,6 @@ void start_game()
 	{
 		for (player& current_player : this_board.players)
 		{
-			std::shared_ptr<tile> current_tile = this_board.play_area[current_player.get_y()][current_player.get_x()];
 			player_turn(current_player, this_board);
 		}
 	}
