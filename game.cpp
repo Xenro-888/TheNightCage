@@ -55,33 +55,40 @@ void place_start_tiles(board& this_board, std::vector<player>& players)
 
 void player_turn(player& current_player, board& this_board)
 {
-	std::string player_input;
+	std::string player_turn_choice;
 
 	display_player_turn(current_player);
-	while (player_input != "MOVE" && player_input != "STAY")
+	while (player_turn_choice != "MOVE" && player_turn_choice != "STAY")
 	{
 		// get player input
 		std::cout << "WHAT WOULD YOU LIKE TO DO?\n";
 		std::cout << "MOVE OR STAY\n";
-		std::getline(std::cin, player_input);
+		std::getline(std::cin, player_turn_choice);
 
-		if (player_input == "MOVE")
+		if (player_turn_choice == "MOVE")
 		{
 			// get valid corridor input
-			int corridor = -1;
-			while (corridor < 0 || corridor > 5)
+			std::string corridor_player_input;
+			int chosen_corridor = -1;
+
+			while (chosen_corridor < 0 || chosen_corridor > 5)
 			{
 				std::cout << "WHICH CORRIDOR WOULD YOU LIKE TO GO DOWN?\n";
 				std::cout << "1: UP | 2: DOWN | 3: LEFT | 4: RIGHT\n";
-				std::getline(std::cin, player_input);
+				std::getline(std::cin, corridor_player_input);
 
-				if (player_input.length() == 1 && std::isdigit(player_input[0]))
-					corridor = std::stoi(player_input);
+				if (corridor_player_input.length() == 1 && std::isdigit(corridor_player_input[0]))
+				{
+					chosen_corridor = std::stoi(corridor_player_input) - 1;
+				}
 			}
+			this_board.move_player(current_player, chosen_corridor);
 
-			this_board.move_player(current_player, corridor);
+			// illuminate the board around the player
+			if (current_player.is_lit())
+				this_board.illuminate(current_player);
 		}
-		else if (player_input == "STAY")
+		else if (player_turn_choice == "STAY")
 		{
 			
 		}
@@ -109,6 +116,7 @@ void start_game()
 		for (player& current_player : this_board.players)
 		{
 			player_turn(current_player, this_board);
+			this_board.darkness();
 		}
 	}
 

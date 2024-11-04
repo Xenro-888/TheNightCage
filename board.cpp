@@ -75,6 +75,16 @@ bool board::move_player(player& player_to_move, int corridor)
 {
 	shared_ptr<tile> first_tile = play_area[player_to_move.get_y()][player_to_move.get_x()];
 	shared_ptr<tile> next_tile = get_adj_tile(first_tile->get_x(), first_tile->get_y(), corridor);
+	array<bool, 4> first_tile_corridors = first_tile.get()->get_corridors();
+	array<bool, 4> next_tile_corridors = next_tile.get()->get_corridors();
+
+	if (!first_tile_corridors[corridor] || !next_tile_corridors[(corridor + 2) % 4])
+		return false;
+
+	first_tile.get()->set_standing_player(nullptr);
+	next_tile.get()->set_standing_player(&player_to_move);
+	player_to_move.set_x(next_tile.get()->get_x());
+	player_to_move.set_y(next_tile.get()->get_y());
 
 	return true;
 }
@@ -191,9 +201,9 @@ void board::display()
 				else if (player_color == 1)
 					std::cout << "\x1b[33m";
 				else if (player_color == 2)
-					std::cout << "\x1b[34m";
+					std::cout << "\x1b[35m";
 				else if (player_color == 3)
-					std::cout << "\x1b[31m";
+					std::cout << "\x1b[34m";
 			}
 
 			if (current_tile_type == pit_tile)
