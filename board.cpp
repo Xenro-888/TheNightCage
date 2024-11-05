@@ -115,7 +115,6 @@ void board::illuminate(player& lit_player)
 void board::darkness()
 {
 	vector<shared_ptr<tile>> safe_tiles;
-	int corridor_directions[][2] = { {0, -1}, {-1, 0}, {0, 1}, {1, 0} };
 
 	for (player& curr_player : players)
 	{
@@ -132,8 +131,8 @@ void board::darkness()
 			if (!standing_tile->get_corridors()[corridor])
 				continue;
 
-			shared_ptr<tile> adj_tile = get_adj_tile(player_x, player_y, corridor);
-			safe_tiles.push_back(adj_tile);
+			shared_ptr<tile> adjacent_tile = get_adj_tile(player_x, player_y, corridor);
+			safe_tiles.push_back(adjacent_tile);
 		}
 	}
 
@@ -141,15 +140,18 @@ void board::darkness()
 	{
 		for (int x = 0; x < 6; x++)
 		{
-			shared_ptr<tile> curr_tile = play_area[y][x];
-			auto found = std::find_if(
+			shared_ptr<tile> current_tile = play_area[y][x];
+			if (current_tile.get() == nullptr)
+				continue;
+
+			auto found_safe_tile = std::find_if(
 				safe_tiles.begin(), 
 				safe_tiles.end(), 
-				[&curr_tile](const shared_ptr<tile> tile) { return tile.get() == curr_tile.get(); }
+				[&current_tile](const shared_ptr<tile> safe_tile) { return safe_tile.get() == current_tile.get(); }
 			);
 	
-			if (found == safe_tiles.end() && curr_tile.get() != nullptr)
-				destroy_tile(curr_tile);
+			if (found_safe_tile == safe_tiles.end())
+				destroy_tile(current_tile);
 		}
 	}
 }

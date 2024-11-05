@@ -74,7 +74,7 @@ void player_turn(player& current_player, board& this_board)
 			while (chosen_corridor < 0 || chosen_corridor > 5)
 			{
 				std::cout << "WHICH CORRIDOR WOULD YOU LIKE TO GO DOWN?\n";
-				std::cout << "1: UP | 2: DOWN | 3: LEFT | 4: RIGHT\n";
+				std::cout << "1: UP | 2: LEFT | 3: DOWN | 4: RIGHT\n";
 				std::getline(std::cin, corridor_player_input);
 
 				if (corridor_player_input.length() == 1 && std::isdigit(corridor_player_input[0]))
