@@ -116,6 +116,7 @@ void board::darkness()
 {
 	vector<shared_ptr<tile>> safe_tiles;
 
+	// find the tiles that are surely illuminated and add them to vector
 	for (player& curr_player : players)
 	{
 		shared_ptr<tile> standing_tile = get_standing_tile(curr_player);
@@ -136,6 +137,15 @@ void board::darkness()
 		}
 	}
 
+	for (shared_ptr<tile>& current_safe_tile : safe_tiles)
+	{
+		std::cout << "TILE: " << 
+		current_safe_tile.get()->get_x() << ", " <<
+ 		current_safe_tile.get()->get_y() << "\n";
+		std::cin.ignore();
+	}
+
+	// destroy tiles that aren't in the safe tile vector
 	for (int y = 0; y < 6; y++)
 	{
 		for (int x = 0; x < 6; x++)
@@ -151,11 +161,16 @@ void board::darkness()
 			);
 	
 			if (found_safe_tile == safe_tiles.end())
+			{
+				std::cout << "DESTROYING TILE: " << 
+				current_tile.get()->get_x() << ", " <<
+				current_tile.get()->get_y() << "\n";
+				std::cin.ignore();
 				destroy_tile(current_tile);
+			}
 		}
 	}
 }
-
 void board::move_tile(shared_ptr<tile> tile_to_move, int x, int y)
 {
 	if (play_area[y][x] != nullptr)
@@ -171,7 +186,7 @@ void board::move_tile(shared_ptr<tile> tile_to_move, int x, int y)
 
 void board::destroy_tile(shared_ptr<tile> tile_to_destroy)
 {
-	play_area[tile_to_destroy->get_y()][tile_to_destroy->get_x()] = nullptr;
+	play_area[tile_to_destroy->get_y()][tile_to_destroy->get_x()].reset();
 }
 
 void board::display()

@@ -11,7 +11,6 @@ using std::array, std::shared_ptr, std::vector;
 class board
 {
 public:
-x
 	array<array<shared_ptr<tile>, 6>, 6> play_area;
 	vector<player> players;
 
