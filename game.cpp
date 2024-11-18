@@ -53,47 +53,26 @@ void place_start_tiles(board& this_board, std::vector<player>& players)
 	}
 }
 
-void player_turn(player& current_player, board& this_board)
+void player_is_moving(player& player_to_move, board& this_board)
 {
-	std::string player_turn_choice;
+	std::string player_input;
+	int selected_corridor = -1;
+	bool can_move = false;
 
-	display_player_turn(current_player);
-	while (player_turn_choice != "MOVE" && player_turn_choice != "STAY")
+	while (!can_move || player_input.length() != 1 || !std::isdigit(player_input[0]))
 	{
-		// get player input
-		std::cout << "WHAT WOULD YOU LIKE TO DO?\n";
-		std::cout << "MOVE OR STAY\n";
-		std::getline(std::cin, player_turn_choice);
+		std::cout << "WHICH CORRIDOR DO YOU FOLLOW?\n";
+		std::cout << "UP: 1 | LEFT: 2 | DOWN: 3 | RIGHT : 4\n";
+		std::getline(std::cin, player_input);
 
-		if (player_turn_choice == "MOVE")
-		{
-			// get valid corridor input
-			std::string corridor_player_input;
-			int chosen_corridor = -1;
+		selected_corridor = std::stoi(player_input);
 
-			while (chosen_corridor < 0 || chosen_corridor > 5)
-			{
-				std::cout << "WHICH CORRIDOR WOULD YOU LIKE TO GO DOWN?\n";
-				std::cout << "1: UP | 2: LEFT | 3: DOWN | 4: RIGHT\n";
-				std::getline(std::cin, corridor_player_input);
+		can_move = this_board.move_player(player_to_move, selected_corridor);	
+		if (player_to_move.is_lit())
+			this_board.illuminate(player_to_move);
 
-				if (corridor_player_input.length() == 1 && std::isdigit(corridor_player_input[0]))
-				{
-					chosen_corridor = std::stoi(corridor_player_input) - 1;
-				}
-			}
-			this_board.move_player(current_player, chosen_corridor);
-
-			// illuminate the board around the player
-			if (current_player.is_lit())
-				this_board.illuminate(current_player);
-		}
-		else if (player_turn_choice == "STAY")
-		{
-			
-		}
+		this_board.darkness();
 	}
-	this_board.display();
 }
 
 void start_game()
@@ -115,7 +94,7 @@ void start_game()
 	{
 		for (player& current_player : this_board.players)
 		{
-			player_turn(current_player, this_board);
+			player_is_moving(current_player, this_board);
 			this_board.darkness();
 		}
 	}

@@ -94,6 +94,7 @@ void board::illuminate(player& lit_player)
 	array<bool, 4> current_tile_corridors = get_standing_tile(lit_player).get()->get_corridors();
 	array<array<int, 2>, 4> corridor_directions = get_corridor_directions();
 	
+	// iterate through each corridor and illuminate accordingly
 	for (int corridor = 0; corridor < 4; corridor++)
 	{
 		if (!current_tile_corridors[corridor])
@@ -136,15 +137,7 @@ void board::darkness()
 			safe_tiles.push_back(adjacent_tile);
 		}
 	}
-
-	for (shared_ptr<tile>& current_safe_tile : safe_tiles)
-	{
-		std::cout << "TILE: " << 
-		current_safe_tile.get()->get_x() << ", " <<
- 		current_safe_tile.get()->get_y() << "\n";
-		std::cin.ignore();
-	}
-
+ 
 	// destroy tiles that aren't in the safe tile vector
 	for (int y = 0; y < 6; y++)
 	{
@@ -162,10 +155,6 @@ void board::darkness()
 	
 			if (found_safe_tile == safe_tiles.end())
 			{
-				std::cout << "DESTROYING TILE: " << 
-				current_tile.get()->get_x() << ", " <<
-				current_tile.get()->get_y() << "\n";
-				std::cin.ignore();
 				destroy_tile(current_tile);
 			}
 		}
@@ -186,7 +175,8 @@ void board::move_tile(shared_ptr<tile> tile_to_move, int x, int y)
 
 void board::destroy_tile(shared_ptr<tile> tile_to_destroy)
 {
-	play_area[tile_to_destroy->get_y()][tile_to_destroy->get_x()].reset();
+	play_area[tile_to_destroy->get_y()][tile_to_destroy->get_x()] = nullptr;
+	std::cout << "POINTER GET: " << play_area[tile_to_destroy->get_y()][tile_to_destroy->get_x()].get() << "\n";
 }
 
 void board::display()
@@ -222,7 +212,6 @@ void board::display()
 				else if (player_color == 3)
 					std::cout << "\x1b[34m";
 			}
-
 			if (current_tile_type == pit_tile)
 				std::cout << "0";
 			else
@@ -237,7 +226,7 @@ void board::display()
 				if (!current_tile.get()->get_corridors()[corridor])
 					continue;
 
-				// sest cursor position to the corridor's position
+				// set cursor position to the corridor's position
 				std::cout << "\x1b[" << 
 					tile_console_y + current_corridor_direction[1] << ";" << 
 					tile_console_x + current_corridor_direction[0] << "H";
