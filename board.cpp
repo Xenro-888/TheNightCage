@@ -2,6 +2,7 @@
 #include <vector>
 #include <memory>
 #include <algorithm>
+#include <string>
 #include "board.h"
 
 using std::array, std::shared_ptr, std::vector;
@@ -78,8 +79,30 @@ bool board::move_player(player& player_to_move, int corridor)
 	array<bool, 4> first_tile_corridors = first_tile.get()->get_corridors();
 	array<bool, 4> next_tile_corridors = next_tile.get()->get_corridors();
 
-	if (!first_tile_corridors[corridor] || !next_tile_corridors[(corridor + 2) % 4])
+	if (!first_tile_corridors[corridor] || !next_tile_corridors[(corridor + 2) % 4] || next_tile.get()->get_standing_player() != nullptr)
 		return false;
+
+	// if the player is moving onto a pit
+	if (next_tile.get()->get_type() == pit_tile)
+	{
+		std::string player_input;
+
+		first_tile.get()->set_standing_player(nullptr);
+		std::cout << "YOU FELL AND LOST A TURN!\n";
+		std::cout << "WOULD YOU LIKE TO FALL ONTO A TILE THAT IS ON YOUR CURRENT ROW OR COLUMN?\n";
+
+		while (player_input != "ROW" && player_input != "COLUMN")
+		{
+			std::getline(std::cin, player_input);
+		}
+
+		if (player_input == "ROW")
+			player_to_move.set_y(-1);
+		else
+			player_to_move.set_x(-1);
+
+		return true;
+	}
 
 	first_tile.get()->set_standing_player(nullptr);
 	next_tile.get()->set_standing_player(&player_to_move);
@@ -101,14 +124,29 @@ void board::illuminate(player& lit_player)
 			continue;	
 
 		array<int, 2>& current_corridor_direction = corridor_directions[corridor];
-		shared_ptr<tile> adjacent_spot = get_adj_tile(lit_player.get_x(), lit_player.get_y(), corridor);
 		int adjacent_spot_x = modulo(lit_player.get_x() + current_corridor_direction[0], 6);
 		int adjacent_spot_y = modulo(lit_player.get_y() + current_corridor_direction[1], 6);
+		shared_ptr<tile> adjacent_spot = play_area[adjacent_spot_y][adjacent_spot_x];
 
 		if (adjacent_spot.get() != nullptr)
 			continue;
 
-		shared_ptr<tile> new_tile = std::make_shared<tile>(tile(cross_tile));
+		// choose the new tile's type
+		tile_type new_tile_type = unspecified;
+		srand(time(NULL)); // set the seed to random
+		while (new_tile_type == unspecified || new_tile_type == start_tile)
+		{
+			new_tile_type = (tile_type) (rand() % 9);
+		}
+		shared_ptr<tile> new_tile = std::make_shared<tile>(tile(new_tile_type));
+
+		// rotate the tile to make sure it connects to the current tile
+		array<bool, 4> new_tile_corridors = new_tile.get()->get_corridors();
+		while (!new_tile_corridors[(corridor + 2) % 4])
+		{
+			new_tile.get()->rotate();
+		}
+
 		place_tile(new_tile, adjacent_spot_x, adjacent_spot_y);
 	}
 }
@@ -176,7 +214,6 @@ void board::move_tile(shared_ptr<tile> tile_to_move, int x, int y)
 void board::destroy_tile(shared_ptr<tile> tile_to_destroy)
 {
 	play_area[tile_to_destroy->get_y()][tile_to_destroy->get_x()] = nullptr;
-	std::cout << "POINTER GET: " << play_area[tile_to_destroy->get_y()][tile_to_destroy->get_x()].get() << "\n";
 }
 
 void board::display()
@@ -184,6 +221,17 @@ void board::display()
 	const int TILE_SIZE = 3;
 	std::cout << "| THE NIGHT CAGE |\n";
 	std::cout << "\x1b[2J"; // clear screen
+
+	// display falling players
+	for (player& current_player : players)
+	{
+		if (!current_player.is_falling())
+			continue;
+
+		int tile_console_x = std::clamp(current_player.get_x(), 0, 5) * TILE_SIZE + 2;
+		int tile_console_y = std::clamp(current_player.get_y(), 0, 5) * TILE_SIZE + 2;
+		std::cout << "\x1b[" << tile_console_y << ";" << tile_console_x << "H"; // set cursor position to the player's token position
+	}
 
 	for (int y = 0; y < 6; y++)
 	{
