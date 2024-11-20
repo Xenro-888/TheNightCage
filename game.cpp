@@ -2,6 +2,7 @@
 #include <string>
 #include <memory>
 #include <functional>
+#include <limits>
 #include "board.h"
 
 void display_player_turn(player& current_player)
@@ -38,6 +39,7 @@ std::string get_valid_input(std::function<bool(std::string)> ruleset)
 
 	while (!valid_input)
 	{
+		std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // clear input buffer
 		std::getline(std::cin, player_input);
 
 		// check if input is valid
@@ -47,7 +49,7 @@ std::string get_valid_input(std::function<bool(std::string)> ruleset)
 		if (!valid_input)
 			std::cout << "INVALID INPUT. TRY AGAIN.\n";
 	}
-
+	
 	return player_input;
 }
 
