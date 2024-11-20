@@ -18,3 +18,6 @@ game.o: game.cpp
 
 clean:
 	rm *.o TheNightCage
+
+run:
+	./TheNightCage

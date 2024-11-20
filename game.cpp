@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <memory>
+#include <functional>
 #include "board.h"
 
 void display_player_turn(player& current_player)
@@ -25,47 +26,62 @@ void display_player_turn(player& current_player)
 	std::cout << "\x1b[97m"; // set cursor color to white
 }
 
-void place_start_tiles(board& this_board, std::vector<player>& players)
+// get_valid_input()
+// Repeatedly attemps to gain valid user input using the ruleset provided.
+//
+// Arguments:
+// ruleset (std::function<bool(std::string)>): a function/lambda that takes the player's input and tests it against a ruleset
+std::string get_valid_input(std::function<bool(std::string)> ruleset)
 {
 	std::string player_input;
+	bool valid_input = false;
 
-	for (player& curr_player : players)
+	while (!valid_input)
 	{
-		std::shared_ptr<tile> plr_start_tile = std::make_shared<tile>(tile(start_tile));
-		int tile_y = -1;
-		int tile_x = -1;
+		std::getline(std::cin, player_input);
 
-		while (!this_board.valid_index(tile_x, tile_y))
+		// check if input is valid
+		if (ruleset(player_input))
+			valid_input = true;
+
+		if (!valid_input)
+			std::cout << "INVALID INPUT. TRY AGAIN.\n";
+	}
+
+	return player_input;
+}
+
+// place_start_tiles()
+// Has each player place their start tile in their specified position.
+void place_start_tiles(board& this_board)
+{
+	for (player& current_player : this_board.players) 
+	{
+		bool valid_input = false;
+		shared_ptr<tile> player_start_tile = std::make_unique<tile>(tile(start_tile));
+		std::function<bool(std::string)> input_ruleset = [](std::string input) 
 		{
-			std::cout << "WHERE WOULD YOU LIKE TO PLACE YOUR START TILE?\n";
-			std::cout << "(X COORDINATE, Y COORDINATE)\n";
-			std::getline(std::cin, player_input);
-			if (player_input.length() == 3)
-			{
-				// turn the player input to numeric coordinates
-				tile_x = player_input[0] - '0' - 1;
-				tile_y = player_input[2] - '0' - 1;
-			}
-		}
+			if (input.length() == 3 && std::isdigit(input[0]) && std::isdigit(input[2]))
+				return true;
 
-		this_board.place_tile(plr_start_tile, tile_x, tile_y);
-		this_board.place_player(curr_player, tile_x, tile_y);
-		this_board.illuminate(curr_player);
+			return false;
+		};
+
+		std::cout << "WHERE WOULD YOU LIKE TO PLACE YOUR STARTING TILE?\n";
+		std::cout << "\"X Y\" (STARTING FROM THE TOP-RIGHT CORNER.)\n";
+		std::string player_input = get_valid_input(input_ruleset);
+		int tile_x = player_input[0] - '0' - 1;
+		int tile_y = player_input[2] - '0' - 1;
+
+		this_board.place_tile(player_start_tile, tile_x, tile_y);
+		this_board.place_player(current_player, tile_x, tile_y);
+		this_board.illuminate(current_player);
 		this_board.display();
 	}
 }
 
-/*
-move_player()
-
-Move the player down the corridor they specify.
-
-Args:
-	player_to_move (player): The player who wants to move
-
-Returns:
-	None.
-*/
+// move_player()
+// Moves the player down the corridor they specify.
 void move_player(player& player_to_move, board& this_board)
 {
 	std::string player_input;
@@ -77,9 +93,10 @@ void move_player(player& player_to_move, board& this_board)
 
 	while (!can_move)
 	{
-		// gain input
+		// get player input
 		while (player_input != "UP" && player_input != "DOWN" && player_input != "LEFT" && player_input != "RIGHT")
 		{
+			std::cin.clear();
 			std::getline(std::cin, player_input);
 		}
 
@@ -95,8 +112,10 @@ void move_player(player& player_to_move, board& this_board)
 
 		// perform player movement
 		can_move = this_board.move_player(player_to_move, selected_corridor);
+		std::cout << "PLAYER POSITION: " << player_to_move.get_x() << ", " << player_to_move.get_y();
 		if (player_to_move.is_lit())
 			this_board.illuminate(player_to_move);
+		std::cout << "PLAYER ILLUMINATION\n";
 
 		// tell the player if they did something wrong
 		if (!can_move)
@@ -118,7 +137,7 @@ void start_game()
 	}
 
 	// start of game
-	place_start_tiles(this_board, this_board.players);
+	place_start_tiles(this_board);
 
 	// main game loop
 	while (!game_over)

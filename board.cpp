@@ -103,6 +103,11 @@ bool board::move_player(player& player_to_move, int corridor)
 
 		return true;
 	}
+	// if the player's candle isn't lit and there isn't already a set next tile to move onto
+	else if (!player_to_move.is_lit())
+	{
+
+	}
 
 	first_tile.get()->set_standing_player(nullptr);
 	next_tile.get()->set_standing_player(&player_to_move);
