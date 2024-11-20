@@ -49,7 +49,6 @@ std::string get_valid_input(std::function<bool(std::string)> ruleset)
 		if (!valid_input)
 			std::cout << "INVALID INPUT. TRY AGAIN.\n";
 	}
-	
 	return player_input;
 }
 
