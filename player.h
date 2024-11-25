@@ -21,6 +21,8 @@ public:
 	void set_y(int y);
 	void set_lit(bool lit);
 
+	bool operator<(const player) const;
+
 	player(int color);
 };
 

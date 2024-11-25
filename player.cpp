@@ -9,6 +9,7 @@ bool player::is_falling()
 {
 	if (x == -1 || y == -1)
 		return true;
+
 	return false;
 }
 
@@ -16,9 +17,17 @@ void player::set_x(int x) { this->x = x; }
 void player::set_y(int y) { this->y = y; }
 void player::set_lit(bool lit) { this->lit = lit; }
 
+bool player::operator<(const player player2) const
+{
+	if (player2.color < this->color)
+		return true;
+		
+	return false;
+}
+
 player::player(int color)
 {
-	nerve = 0;
+	nerve = 2;
 	this->lit = true;
 	this->color = color;
 	x = -1;

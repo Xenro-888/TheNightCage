@@ -3,13 +3,16 @@
 
 #include <vector>
 #include <memory>
+#include <map>
 #include "tile.h"
 #include "player.h"
 
-using std::array, std::shared_ptr, std::vector;
+using std::array, std::shared_ptr, std::vector, std::map;
 
 class board
 {
+	map<tile_type, int> tile_type_counts;
+
 public:
 	array<array<shared_ptr<tile>, 6>, 6> play_area;
 	vector<player> players;
@@ -21,6 +24,11 @@ public:
 	shared_ptr<tile> get_standing_tile(player& prisoner);
 	shared_ptr<tile> get_adj_tile(int x, int y, int corridor);
 	array<array<int, 2>, 4> get_corridor_directions();
+	map<tile_type, int> get_tile_type_counts();
+
+	void set_tile_type_count(tile_type type_to_set, int number);
+
+	shared_ptr<tile> new_random_tile(vector<tile_type> allowed_types);
 
 	bool move_player(player& player_to_move, int corridor);
 	void illuminate(player& lit_player);

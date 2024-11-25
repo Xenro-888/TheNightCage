@@ -5,8 +5,6 @@
 #include <string>
 #include "board.h"
 
-using std::array, std::shared_ptr, std::vector;
-
 int modulo(int number, int divisor)
 {
 	int result = number % divisor;
@@ -72,6 +70,29 @@ array<array<int, 2>, 4> board::get_corridor_directions()
 	return corridor_directions;
 }
 
+map<tile_type, int> board::get_tile_type_counts() { return tile_type_counts; }
+
+void board::set_tile_type_count(tile_type type_to_set, int number) { tile_type_counts[type_to_set] = number; }
+
+shared_ptr<tile> board::new_random_tile(vector<tile_type> allowed_types)
+{
+	tile_type new_tile_type = unspecified;
+	srand(time(NULL)); // set the seed to random
+
+	while (
+		(std::find(allowed_types.begin(), allowed_types.end(), new_tile_type) == allowed_types.end()) || 
+		(new_tile_type == unspecified) ||
+		tile_type_counts[new_tile_type] <= 0
+	)
+	{
+		new_tile_type = (tile_type) (rand() % 9);
+	}
+
+	shared_ptr<tile> new_tile = std::make_shared<tile>(tile(new_tile_type));
+	tile_type_counts[new_tile_type] -= 1; // decrement the count for this type of tile
+	return new_tile;
+}
+
 bool board::move_player(player& player_to_move, int corridor) 
 {
 	shared_ptr<tile> first_tile = play_area[player_to_move.get_y()][player_to_move.get_x()];
@@ -79,18 +100,24 @@ bool board::move_player(player& player_to_move, int corridor)
 	array<bool, 4> first_tile_corridors = first_tile.get()->get_corridors();
 	array<bool, 4> next_tile_corridors = next_tile.get()->get_corridors();
 
-	if (!first_tile_corridors[corridor] || !next_tile_corridors[(corridor + 2) % 4] || next_tile.get()->get_standing_player() != nullptr)
+	// if there is no corridor on the current tile, or there's no corridor connecting the next tile to the current one
+	if (!first_tile_corridors[corridor] || !next_tile_corridors[(corridor + 2) % 4])
+		return false;
+
+	// if there is already a player on the next tile
+	if (next_tile.get()->get_standing_player() != nullptr && next_tile.get()->get_type() != gate_tile)
 		return false;
 
 	// if the player is moving onto a pit
 	if (next_tile.get()->get_type() == pit_tile)
 	{
-		std::string player_input;
-
 		first_tile.get()->set_standing_player(nullptr);
+
 		std::cout << "YOU FELL AND LOST A TURN!\n";
 		std::cout << "WOULD YOU LIKE TO FALL ONTO A TILE THAT IS ON YOUR CURRENT ROW OR COLUMN?\n";
+		std::string player_input;
 
+		// gain player input
 		while (player_input != "ROW" && player_input != "COLUMN")
 		{
 			std::getline(std::cin, player_input);
@@ -106,7 +133,7 @@ bool board::move_player(player& player_to_move, int corridor)
 	// if the player's candle isn't lit and there isn't already a set next tile to move onto
 	else if (!player_to_move.is_lit())
 	{
-
+		return true;
 	}
 
 	first_tile.get()->set_standing_player(nullptr);
@@ -187,7 +214,7 @@ void board::darkness()
 		for (int x = 0; x < 6; x++)
 		{
 			shared_ptr<tile> current_tile = play_area[y][x];
-			if (current_tile.get() == nullptr)
+			if (current_tile == nullptr)
 				continue;
 
 			auto found_safe_tile = std::find_if(
@@ -233,9 +260,34 @@ void board::display()
 		if (!current_player.is_falling())
 			continue;
 
-		int tile_console_x = std::clamp(current_player.get_x(), 0, 5) * TILE_SIZE + 2;
-		int tile_console_y = std::clamp(current_player.get_y(), 0, 5) * TILE_SIZE + 2;
+		int tile_console_x = -1;
+		int tile_console_y = -1;
+
+		// set console cursor coordinates
+		if (current_player.get_x() < 0)
+		{
+			tile_console_x = TILE_SIZE * 6 + 2;
+			tile_console_y = current_player.get_y();
+		}
+		else if (current_player.get_y() < 0)
+		{
+			tile_console_x = current_player.get_x();
+			tile_console_y = TILE_SIZE * 6 + 2;
+		}
 		std::cout << "\x1b[" << tile_console_y << ";" << tile_console_x << "H"; // set cursor position to the player's token position
+
+		// print player token color
+		int player_color = current_player.get_color();
+		if (player_color == 0)
+			std::cout << "\x1b[32m"; // print green
+		else if (player_color == 1)
+			std::cout << "\x1b[33m"; // print yellow
+		else if (player_color == 2)
+			std::cout << "\x1b[35m"; // print purple
+		else if (player_color == 3)
+			std::cout << "\x1b[34m"; // print green
+
+		std::cout << "*"; // print player token
 	}
 
 	for (int y = 0; y < 6; y++)
@@ -305,6 +357,15 @@ board::board()
 			play_area[y][x] = nullptr;
 		}
 	}
+
+	// init tile counts
+	tile_type_counts[straight_tile] = 10;
+	tile_type_counts[cross_tile] = 12;
+	tile_type_counts[t_tile] = 30;
+	tile_type_counts[wax_eater] = 12;
+	tile_type_counts[start_tile] = 4;
+	tile_type_counts[key_tile] = 6;
+	tile_type_counts[gate_tile] = 4;
 }
 
 // defenition isn't needed currently as shared pointers will be deallocated at the end of the program
