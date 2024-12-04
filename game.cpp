@@ -32,22 +32,27 @@ void display_player_turn(player& current_player)
 //
 // Arguments:
 // ruleset (std::function<bool(std::string)>): a function/lambda that takes the player's input and tests it against a ruleset
-std::string get_valid_input(std::function<bool(std::string)> ruleset)
+std::string get_valid_input(const std::function<bool(std::string)>& ruleset)
 {
-	std::string player_input;
+	std::string player_input = "";
 	bool valid_input = false;
 
 	while (!valid_input)
 	{
+		if (std::cin.fail())
+		{
+			std::cout << "INPUT STREAM FAILURE!\n";
+		}
+
 		std::getline(std::cin, player_input);
 
 		// check if input is valid
-		if (ruleset(player_input))
-			valid_input = true;
+		valid_input = ruleset(player_input);
 
 		if (!valid_input)
 			std::cout << "INVALID INPUT. TRY AGAIN.\n";
 	}
+	
 	return player_input;
 }
 
@@ -60,8 +65,9 @@ void place_start_tiles(board& this_board)
 {
 	for (player& current_player : this_board.players) 
 	{
+		
 		bool valid_input = false;
-		shared_ptr<tile> player_start_tile = std::make_unique<tile>(tile(start_tile));
+		shared_ptr<tile> player_start_tile = std::make_unique<tile>(start_tile);
 		std::function<bool(std::string)> input_ruleset = [](std::string input)
 			{
 				if (input.length() == 3 && std::isdigit(input[0]) && std::isdigit(input[2]))
@@ -178,14 +184,12 @@ void start_game()
 {
 	board this_board = board();
 	bool game_over = false;
-	std::map<player, int> number_of_missed_turns;
 
 	// init players
 	for (int i = 0; i < 4; i++)
 	{
 		player new_player = player(i);
 		this_board.players.push_back(new_player);
-		number_of_missed_turns[new_player] = 0;
 	}
 
 	// start of game
@@ -197,17 +201,6 @@ void start_game()
 		for (player& current_player : this_board.players)
 		{
 			bool player_is_falling = current_player.is_falling();
-			int player_missed_turns = number_of_missed_turns[current_player];
-
-			// if the player's turn should be skipped
-			if (player_is_falling && player_missed_turns <= 0)
-			{
-				number_of_missed_turns[current_player] += 1;
-				continue;
-			}
-			// if the player's turn has been skipped and they should fall onto a new tile
-			else if (player_is_falling && player_missed_turns >= 1)
-				fall_onto_tile(current_player, this_board);
 
 			display_player_turn(current_player);
 			move_player(current_player, this_board);
