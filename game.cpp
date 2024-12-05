@@ -32,25 +32,23 @@ void display_player_turn(player& current_player)
 //
 // Arguments:
 // ruleset (std::function<bool(std::string)>): a function/lambda that takes the player's input and tests it against a ruleset
-std::string get_valid_input(const std::function<bool(std::string)>& ruleset)
+std::string get_valid_input(std::function<bool(const std::string)> ruleset)
 {
 	std::string player_input = "";
 	bool valid_input = false;
 
 	while (!valid_input)
 	{
-		if (std::cin.fail())
-		{
-			std::cout << "INPUT STREAM FAILURE!\n";
-		}
-
 		std::getline(std::cin, player_input);
 
 		// check if input is valid
 		valid_input = ruleset(player_input);
 
 		if (!valid_input)
+		{
+			player_input.clear();
 			std::cout << "INVALID INPUT. TRY AGAIN.\n";
+		}
 	}
 	
 	return player_input;
@@ -68,8 +66,7 @@ void place_start_tiles(board& this_board)
 		
 		bool valid_input = false;
 		shared_ptr<tile> player_start_tile = std::make_unique<tile>(start_tile);
-		std::function<bool(std::string)> input_ruleset = [](std::string input)
-			{
+		std::function<bool(const std::string)> input_ruleset = [](const std::string input) {
 				if (input.length() == 3 && std::isdigit(input[0]) && std::isdigit(input[2]))
 					return true;
 
@@ -80,6 +77,8 @@ void place_start_tiles(board& this_board)
 		std::cout << "WHERE WOULD YOU LIKE TO PLACE YOUR STARTING TILE?\n";
 		std::cout << "\"X Y\" (STARTING FROM THE TOP-RIGHT CORNER.)\n";
 		std::string player_input = get_valid_input(input_ruleset);
+		std::cout << "PLAYER_INPUT: " << player_input << "\n"; 
+
 		int tile_x = player_input[0] - '0' - 1;
 		int tile_y = player_input[2] - '0' - 1;
 
@@ -141,35 +140,33 @@ void fall_onto_tile(player& falling_player, board& this_board)
 	vector<tile_type> possbie_landing_tile_types = {straight_tile, t_tile, cross_tile, wax_eater, key_tile, gate_tile};
 	shared_ptr<tile> new_landing_tile = this_board.new_random_tile(possbie_landing_tile_types);
 
-	std::cout << "YOU'RE ABOUT TO HIT THE GROUND. ENTER THE INDEX OF WHERE YOU WANT TO LAND.\n";
-	std::cout << "(NUMBER OF TILES AWAY FROM LEFT/TOP EDGE.)\n";
+	std::cout << "YOU'RE ABOUT TO HIT THE GROUND. ENTER THE POSITION OF WHERE YOU WANT TO LAND.\n";
 
 	// get user input
 	while (!valid_spot)
 	{
-		std::string player_input = get_valid_input([](const std::string input) -> bool 
-			{
-				if (input.length() == 1 && std::isdigit(input[0]))
-					return true;
+		std::string player_input = get_valid_input([](std::string input) -> bool { 
+			if (input.length() == 3  && std::isdigit(input[0]) && std::isdigit(input[2])) 
+				return true; 
 
-				return false;
-			});
+			return false; 
+		});
 
+		int spot_x = -1;
+		spot_x = player_input[0] - '0';
+		spot_y = player_input[2] - '0';
 
-		int number_of_tiles_from_edge = std::stoi(player_input);
-		if (falling_player.get_x() < 0)
+		// if the player entered a position that isn't on the row or column the specified
+		if (
+			falling_player.get_x() == -1 && spot_y != falling_player.get_y() ||
+			falling_player.get_y() == -1 && spot_x != falling_player.get_x()
+			)
 		{
-			spot_x = number_of_tiles_from_edge;
-			spot_y = falling_player.get_y();
-		}
-		else if (falling_player.get_y() < 0)
-		{
-			spot_x = falling_player.get_x();
-			spot_y = number_of_tiles_from_edge;
+			continue;
 		}
 
-		shared_ptr<tile> falling_spot = this_board.play_area[spot_y][spot_x];
-		if (falling_spot == nullptr)
+		shared_ptr<tile> landing_tile = this_board.play_area[spot_y][spot_x];
+		if (landing_tile == nullptr)
 			valid_spot = true;
 	}
 

@@ -3,6 +3,7 @@
 #include <memory>
 #include <algorithm>
 #include <string>
+#include  <cmath>
 #include "board.h"
 
 int modulo(int number, int divisor)
@@ -177,6 +178,7 @@ void board::illuminate(player& lit_player)
 		while (!new_tile_corridors[(corridor + 2) % 4])
 		{
 			new_tile.get()->rotate();
+			new_tile_corridors = new_tile.get()->get_corridors();
 		}
 
 		place_tile(new_tile, adjacent_spot_x, adjacent_spot_y);
@@ -264,17 +266,18 @@ void board::display()
 		int tile_console_y = -1;
 
 		// set console cursor coordinates
-		if (current_player.get_x() < 0)
+		if (current_player.get_x() == -1)
 		{
-			tile_console_x = TILE_SIZE * 6 + 2;
+			tile_console_x = 0;
 			tile_console_y = current_player.get_y();
 		}
-		else if (current_player.get_y() < 0)
+		else if (current_player.get_y() == -1)
 		{
 			tile_console_x = current_player.get_x();
-			tile_console_y = TILE_SIZE * 6 + 2;
+			tile_console_y = 0;
 		}
-		std::cout << "\x1b[" << tile_console_y << ";" << tile_console_x << "H"; // set cursor position to the player's token position
+		//std::cout << "\x1b[" << tile_console_y << ";" << tile_console_x << "H"; // set cursor position to the player's token position
+		std::cout << "CURSOR POS: " << tile_console_x << ", " << tile_console_y << "\n";
 
 		// print player token color
 		int player_color = current_player.get_color();
@@ -299,8 +302,10 @@ void board::display()
 				continue;
 				
 			tile_type current_tile_type = current_tile->get_type();
-			int tile_console_x = current_tile->get_x() * TILE_SIZE + 2;
-			int tile_console_y = current_tile->get_y() * TILE_SIZE + 2;
+			int tile_half_size = (int) std::ceil(((float) TILE_SIZE) / 2);
+			int tile_console_x = current_tile->get_x() * TILE_SIZE + tile_half_size + 1;
+			int tile_console_y = current_tile->get_y() * TILE_SIZE + tile_half_size + 1;
+
 			std::cout << "\x1b[" << tile_console_y << ";" << tile_console_x << "H"; // set cursor position to the tile's console position
 
 			// display center of tile

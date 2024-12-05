@@ -6,6 +6,7 @@
 
 int main()
 {
+    int t = 1;
     start_game();
 }
 

@@ -7,6 +7,7 @@ class player
 	int y;
 	int color;
 	bool lit;
+	bool falling;
 	int nerve;
 
 public:
@@ -20,6 +21,7 @@ public:
 	void set_x(int x);
 	void set_y(int y);
 	void set_lit(bool lit);
+	void set_fall_state(bool new_fall_state);
 
 	bool operator<(const player) const;
 
