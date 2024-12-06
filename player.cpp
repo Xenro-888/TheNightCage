@@ -25,6 +25,7 @@ player::player(int color)
 	nerve = 2;
 	this->lit = true;
 	this->color = color;
+	falling = false;
 	x = -1;
 	y = -1;
 }

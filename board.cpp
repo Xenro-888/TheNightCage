@@ -3,7 +3,7 @@
 #include <memory>
 #include <algorithm>
 #include <string>
-#include  <cmath>
+#include <cmath>
 #include "board.h"
 
 int modulo(int number, int divisor)
@@ -28,6 +28,8 @@ void board::place_tile(shared_ptr<tile> tile_to_place, int x, int y)
 	play_area[y][x] = tile_to_place;
 	tile_to_place->set_x(x);
 	tile_to_place->set_y(y);
+
+	std::cout << "PLACED TILE\n";
 }
 
 bool board::place_player(player& player_to_place, int x, int y)
@@ -129,6 +131,7 @@ bool board::move_player(player& player_to_move, int corridor)
 		else
 			player_to_move.set_x(-1);
 
+		player_to_move.set_fall_state(true);
 		return true;
 	}
 	// if the player's candle isn't lit and there isn't already a set next tile to move onto
@@ -147,19 +150,30 @@ bool board::move_player(player& player_to_move, int corridor)
 
 void board::illuminate(player& lit_player)
 {
+	if (lit_player.is_falling())
+		return;
+
+	std::cout << "START\n";
 	array<bool, 4> current_tile_corridors = get_standing_tile(lit_player).get()->get_corridors();
 	array<array<int, 2>, 4> corridor_directions = get_corridor_directions();
+
+	std::cout << "GOT BASIC CORRIDOR INFO\n";
 	
 	// iterate through each corridor and illuminate accordingly
 	for (int corridor = 0; corridor < 4; corridor++)
 	{
+		std::cout << "CORRIDOR: " << corridor << "\n";
 		if (!current_tile_corridors[corridor])
 			continue;	
 
-		array<int, 2>& current_corridor_direction = corridor_directions[corridor];
+		array<int, 2> current_corridor_direction = corridor_directions[corridor];
 		int adjacent_spot_x = modulo(lit_player.get_x() + current_corridor_direction[0], 6);
 		int adjacent_spot_y = modulo(lit_player.get_y() + current_corridor_direction[1], 6);
+
+		std::cout << "ADJ POS: " << adjacent_spot_x << ", " << adjacent_spot_y << "\n";
 		shared_ptr<tile> adjacent_spot = play_area[adjacent_spot_y][adjacent_spot_x];
+
+		std::cout << "GOT ADJ SPOT\n";
 
 		if (adjacent_spot.get() != nullptr)
 			continue;
@@ -171,7 +185,10 @@ void board::illuminate(player& lit_player)
 		{
 			new_tile_type = (tile_type) (rand() % 9);
 		}
+		new_tile_type = pit_tile;
 		shared_ptr<tile> new_tile = std::make_shared<tile>(tile(new_tile_type));
+
+		std::cout << "NEW TILE AND TYPE SELECTED\n";
 
 		// rotate the tile to make sure it connects to the current tile
 		array<bool, 4> new_tile_corridors = new_tile.get()->get_corridors();
@@ -180,6 +197,8 @@ void board::illuminate(player& lit_player)
 			new_tile.get()->rotate();
 			new_tile_corridors = new_tile.get()->get_corridors();
 		}
+
+		std::cout << "ABOUT TO PLACE TILE\n";
 
 		place_tile(new_tile, adjacent_spot_x, adjacent_spot_y);
 	}
@@ -192,11 +211,14 @@ void board::darkness()
 	// find the tiles that are surely illuminated and add them to vector
 	for (player& curr_player : players)
 	{
+		if (curr_player.is_falling())
+			continue;
+
 		shared_ptr<tile> standing_tile = get_standing_tile(curr_player);
 		int player_x = curr_player.get_x();
 		int player_y = curr_player.get_y();
 
-		if (!curr_player.is_lit() || curr_player.is_falling())
+		if (standing_tile == nullptr || !curr_player.is_lit() || curr_player.is_falling())
 			continue;
 
 		safe_tiles.push_back(standing_tile);
@@ -256,43 +278,44 @@ void board::display()
 	std::cout << "| THE NIGHT CAGE |\n";
 	std::cout << "\x1b[2J"; // clear screen
 
-	// display falling players
+	// display player falling tokens
 	for (player& current_player : players)
 	{
 		if (!current_player.is_falling())
 			continue;
 
-		int tile_console_x = -1;
-		int tile_console_y = -1;
-
-		// set console cursor coordinates
+		int cursor_x_position = -1;
+		int cursor_y_position = -1;
+		
 		if (current_player.get_x() == -1)
 		{
-			tile_console_x = 0;
-			tile_console_y = current_player.get_y();
+			cursor_x_position = 0;
+			cursor_y_position = current_player.get_y() * TILE_SIZE + 3;
 		}
 		else if (current_player.get_y() == -1)
 		{
-			tile_console_x = current_player.get_x();
-			tile_console_y = 0;
+			cursor_x_position = current_player.get_x() * TILE_SIZE + 3;
+			cursor_y_position = 0;
 		}
-		//std::cout << "\x1b[" << tile_console_y << ";" << tile_console_x << "H"; // set cursor position to the player's token position
-		std::cout << "CURSOR POS: " << tile_console_x << ", " << tile_console_y << "\n";
 
-		// print player token color
+		// print player color
 		int player_color = current_player.get_color();
 		if (player_color == 0)
-			std::cout << "\x1b[32m"; // print green
+			std::cout << "\x1b[32m";
 		else if (player_color == 1)
-			std::cout << "\x1b[33m"; // print yellow
+			std::cout << "\x1b[33m";
 		else if (player_color == 2)
-			std::cout << "\x1b[35m"; // print purple
-		else if (player_color == 3)
-			std::cout << "\x1b[34m"; // print green
+			std::cout << "\x1b[35m"
+;		else if (player_color == 3)  
+			std::cout << "\x1b[34m";
 
-		std::cout << "*"; // print player token
+		std::cout << "\x1b[" << cursor_y_position << ";" << cursor_x_position << "H"; // set cursor position to token position
+		std::cout << "*";
+		std::cout << "\x1b[37m"; // reset color to white
 	}
 
+	std::cout << "\x1b[0;0H"; // reset cursor position
+	// display tiles
 	for (int y = 0; y < 6; y++)
 	{
 		for (int x = 0; x < 6; x++)
@@ -302,9 +325,8 @@ void board::display()
 				continue;
 				
 			tile_type current_tile_type = current_tile->get_type();
-			int tile_half_size = (int) std::ceil(((float) TILE_SIZE) / 2);
-			int tile_console_x = current_tile->get_x() * TILE_SIZE + tile_half_size + 1;
-			int tile_console_y = current_tile->get_y() * TILE_SIZE + tile_half_size + 1;
+			int tile_console_x = current_tile->get_x() * TILE_SIZE + 3;
+			int tile_console_y = current_tile->get_y() * TILE_SIZE + 3;
 
 			std::cout << "\x1b[" << tile_console_y << ";" << tile_console_x << "H"; // set cursor position to the tile's console position
 

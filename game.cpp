@@ -2,9 +2,8 @@
 #include <string>
 #include <memory>
 #include <functional>
-#include <limits>
-#include <csignal>
 #include "board.h"
+
 void display_player_turn(player& current_player)
 {
 	const std::string GREEN = "\x1b[32m";
@@ -122,8 +121,14 @@ void move_player(player& player_to_move, board& this_board)
 
 		// perform player movement
 		can_move = this_board.move_player(player_to_move, selected_corridor);
+
+		std::cout << "CAN MOVE: " << can_move << "\n";
 		if (player_to_move.is_lit())
+		{
+			std::cout << "PLAYER IS LIT!\n";
 			this_board.illuminate(player_to_move);
+		}
+		std::cout << "AFTER ILLUMINATION CHECK\n";
 
 		if (!can_move)
 			std::cout << "YOU CAN'T MOVE DOWN THAT CORRIDOR. TRY AGAIN.\n";
@@ -181,12 +186,14 @@ void start_game()
 {
 	board this_board = board();
 	bool game_over = false;
+	map<player, int> number_of_skipped_turns;
 
 	// init players
 	for (int i = 0; i < 4; i++)
 	{
 		player new_player = player(i);
 		this_board.players.push_back(new_player);
+		number_of_skipped_turns[new_player] = 0;
 	}
 
 	// start of game
@@ -200,6 +207,23 @@ void start_game()
 			bool player_is_falling = current_player.is_falling();
 
 			display_player_turn(current_player);
+
+			// player falling logic
+			if (player_is_falling && number_of_skipped_turns[current_player] == 0)
+			{
+				number_of_skipped_turns[current_player]++;
+
+				std::cout << "YOU'RE FALLING. TURN SKIPPED.\n";
+				std::cout << "PRESS ANY KEY TO CONTINUE.\n";
+				std::cin.ignore();
+				continue;
+			}
+			else if (player_is_falling && number_of_skipped_turns[current_player] > 0)
+			{
+				fall_onto_tile(current_player, this_board);
+				number_of_skipped_turns[current_player] = 0;
+			}
+
 			move_player(current_player, this_board);
 			this_board.darkness();
 			this_board.display();
