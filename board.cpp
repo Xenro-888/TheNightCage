@@ -372,7 +372,7 @@ void board::display()
 	}
 
 	// move cursor to under the displayed board
-	std::cout << "\x1b[" << TILE_SIZE * 6 + TILE_SIZE - 2 << ";" << TILE_SIZE * 6 + TILE_SIZE - 2 << "H";
+	std::cout << "\x1b[" << TILE_SIZE * 6 + 10 << ";" << 0 << "H";
 }
 
 board::board()

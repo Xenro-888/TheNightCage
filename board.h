@@ -37,6 +37,7 @@ public:
 	void move_tile(shared_ptr<tile> tile_to_move, int x, int y);
 	void destroy_tile(shared_ptr<tile> tile_to_destroy);
 	void display();
+	void clear_under_display();
 
 	board();
 	~board();

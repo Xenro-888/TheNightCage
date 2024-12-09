@@ -161,6 +161,9 @@ void fall_onto_tile(player& falling_player, board& this_board)
 		spot_x = player_input[0] - '0';
 		spot_y = player_input[2] - '0';
 
+		std::cout << "SELECTION SPOT:\n";
+		std::cout << spot_x << ", " << spot_y << "\n";
+
 		// if the player entered a position that isn't on the row or column the specified
 		if (
 			falling_player.get_x() == -1 && spot_y != falling_player.get_y() ||
@@ -171,6 +174,7 @@ void fall_onto_tile(player& falling_player, board& this_board)
 		}
 
 		shared_ptr<tile> landing_tile = this_board.play_area[spot_y][spot_x];
+		std::cout << "LANDING TILE: " << landing_tile.get() << "\n";
 		if (landing_tile == nullptr)
 			valid_spot = true;
 	}
@@ -206,6 +210,7 @@ void start_game()
 		{
 			bool player_is_falling = current_player.is_falling();
 
+			this_board.display();
 			display_player_turn(current_player);
 
 			// player falling logic
@@ -216,6 +221,7 @@ void start_game()
 				std::cout << "YOU'RE FALLING. TURN SKIPPED.\n";
 				std::cout << "PRESS ANY KEY TO CONTINUE.\n";
 				std::cin.ignore();
+
 				continue;
 			}
 			else if (player_is_falling && number_of_skipped_turns[current_player] > 0)
@@ -224,6 +230,7 @@ void start_game()
 				number_of_skipped_turns[current_player] = 0;
 			}
 
+			// basic player logic
 			move_player(current_player, this_board);
 			this_board.darkness();
 			this_board.display();
