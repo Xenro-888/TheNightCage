@@ -4,16 +4,18 @@
 #include <functional>
 #include "board.h"
 
+// display_player_turn()
+// Displays the current player's turn.
+//
+// Arguments:
+// current_player (player&): the player's who's turn it is.
 void display_player_turn(player& current_player)
 {
-	const std::string GREEN = "\x1b[32m";
-	const std::string YELLOW = "\x1b[33m";
-	const std::string PURPLE = "\x1b[35m";
-	const std::string BLUE = "\x1b[34m";
 	int player_color = current_player.get_color();
 	
-	std::cout << "\x1b[" << 3 * 6 << ";0f\n\n"; // set cursor position to under the displayed board
+	//std::cout << "\x1b[" << 3 * 6 + 10 << ";" << 0 << "H"; // set cursor position to under the displayed board
 	std::cout << "\x1b[2K"; // clear the line the cursor is on
+
 	if (player_color == 0)
 		std::cout << GREEN << "GREEN'S TURN" << std::endl;
 	else if (player_color == 1)
@@ -62,21 +64,22 @@ void place_start_tiles(board& this_board)
 {
 	for (player& current_player : this_board.players) 
 	{
-		
 		bool valid_input = false;
 		shared_ptr<tile> player_start_tile = std::make_unique<tile>(start_tile);
-		std::function<bool(const std::string)> input_ruleset = [](const std::string input) {
-				if (input.length() == 3 && std::isdigit(input[0]) && std::isdigit(input[2]))
-					return true;
-
-				return false;
-			};
 
 		// get player input
 		std::cout << "WHERE WOULD YOU LIKE TO PLACE YOUR STARTING TILE?\n";
-		std::cout << "\"X Y\" (STARTING FROM THE TOP-RIGHT CORNER.)\n";
-		std::string player_input = get_valid_input(input_ruleset);
-		std::cout << "PLAYER_INPUT: " << player_input << "\n"; 
+		std::string player_input = get_valid_input([&this_board](const std::string input) {
+			if (
+				input.length() == 3 && 
+				std::isdigit(input[0]) && 
+				std::isdigit(input[2]) &&
+				this_board.valid_index(input[0] - '0' - 1, input[2] - '0' - 1)
+			)
+				return true;
+
+			return false;
+		});
 
 		int tile_x = player_input[0] - '0' - 1;
 		int tile_y = player_input[2] - '0' - 1;
@@ -101,13 +104,12 @@ void move_player(player& player_to_move, board& this_board)
 	while (!can_move)
 	{
 		// get player input
-		std::string player_input = get_valid_input([](const std::string input) -> bool 
-			{
-				if (input == "UP" || input == "DOWN" || input == "LEFT" || input == "RIGHT")
-					return true;
+		std::string player_input = get_valid_input([](const std::string input) {
+			if (input == "UP" || input == "DOWN" || input == "LEFT" || input == "RIGHT")
+				return true;
 
-				return false;
-			});
+			return false;
+		});
 
 		// turn the word into the numeric corridor representation
 		if (player_input == "UP")
@@ -122,21 +124,13 @@ void move_player(player& player_to_move, board& this_board)
 		// perform player movement
 		can_move = this_board.move_player(player_to_move, selected_corridor);
 
-		std::cout << "CAN MOVE: " << can_move << "\n";
-		if (player_to_move.is_lit())
-		{
-			std::cout << "PLAYER IS LIT!\n";
-			this_board.illuminate(player_to_move);
-		}
-		std::cout << "AFTER ILLUMINATION CHECK\n";
-
 		if (!can_move)
 			std::cout << "YOU CAN'T MOVE DOWN THAT CORRIDOR. TRY AGAIN.\n";
 	}
 }
 
 // fall_onto_tile()
-// let a falling player determine where they want to land
+// Let a falling player determine where they want to land
 void fall_onto_tile(player& falling_player, board& this_board)
 {
 	bool valid_spot = false;
@@ -157,47 +151,49 @@ void fall_onto_tile(player& falling_player, board& this_board)
 			return false; 
 		});
 
-		int spot_x = -1;
-		spot_x = player_input[0] - '0';
-		spot_y = player_input[2] - '0';
-
-		std::cout << "SELECTION SPOT:\n";
-		std::cout << spot_x << ", " << spot_y << "\n";
+		spot_x = player_input[0] - '0' - 1;
+		spot_y = player_input[2] - '0' - 1;
 
 		// if the player entered a position that isn't on the row or column the specified
-		if (
-			falling_player.get_x() == -1 && spot_y != falling_player.get_y() ||
-			falling_player.get_y() == -1 && spot_x != falling_player.get_x()
-			)
+		if (falling_player.get_x() == -1 && spot_y != falling_player.get_y())
 		{
+			std::cout << "SPECIFIED POSITION ISN'T ON THE PLAYER'S ROW.\n";
+			continue;
+		}
+		else if (falling_player.get_y() == -1 && spot_x != falling_player.get_x())
+		{
+			std::cout << "SPECIFIED POSITION ISN'T ON THE PLAYER'S COLUMN.\n";
 			continue;
 		}
 
 		shared_ptr<tile> landing_tile = this_board.play_area[spot_y][spot_x];
-		std::cout << "LANDING TILE: " << landing_tile.get() << "\n";
 		if (landing_tile == nullptr)
 			valid_spot = true;
+
+		if (!valid_spot)
+			std::cout << "POSITION ISN'T EMPTY.\n";
 	}
 
 	this_board.place_tile(new_landing_tile, spot_x, spot_y);
 	this_board.place_player(falling_player, spot_x, spot_y);
+	falling_player.set_fall_state(false);
 
 	if (falling_player.is_lit())
 		this_board.illuminate(falling_player);
+
+	this_board.display();
 }
 
 void start_game()
 {
 	board this_board = board();
 	bool game_over = false;
-	map<player, int> number_of_skipped_turns;
 
 	// init players
 	for (int i = 0; i < 4; i++)
 	{
 		player new_player = player(i);
 		this_board.players.push_back(new_player);
-		number_of_skipped_turns[new_player] = 0;
 	}
 
 	// start of game
@@ -208,31 +204,17 @@ void start_game()
 	{
 		for (player& current_player : this_board.players)
 		{
-			bool player_is_falling = current_player.is_falling();
-
 			this_board.display();
 			display_player_turn(current_player);
 
-			// player falling logic
-			if (player_is_falling && number_of_skipped_turns[current_player] == 0)
-			{
-				number_of_skipped_turns[current_player]++;
-
-				std::cout << "YOU'RE FALLING. TURN SKIPPED.\n";
-				std::cout << "PRESS ANY KEY TO CONTINUE.\n";
-				std::cin.ignore();
-
-				continue;
-			}
-			else if (player_is_falling && number_of_skipped_turns[current_player] > 0)
+			// handle player falling
+			if (current_player.is_falling())
 			{
 				fall_onto_tile(current_player, this_board);
-				number_of_skipped_turns[current_player] = 0;
 			}
 
 			// basic player logic
 			move_player(current_player, this_board);
-			this_board.darkness();
 			this_board.display();
 		}
 	}
